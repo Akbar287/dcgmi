@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
-    "vercel-build": "prisma migrate deploy && next build",
+    "vercel-build": "prisma generate && next build",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "method:verify": "vitest run lib/method",
