@@ -49,7 +49,7 @@ async function renderView(module: ModuleKey, slug: string, def: SectionDef, t: T
   return (
     <>
       {header?.ok ? header.data : null}
-      <DataTable columns={view.columns(t)} rows={rows.data} storageKey={`${module}.${slug}`} />
+      <DataTable columns={view.columns(t)} rows={rows.data} storageKey={`${module}.${slug}`} exportHref={`/api/export/table?module=${module}&section=${slug}`} />
     </>
   );
 }

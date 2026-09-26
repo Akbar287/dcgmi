@@ -18,6 +18,8 @@ import {
   setUserPasswordAction,
   updateUserRoleAction,
 } from "../settings/user-actions";
+import { BudgetView } from "./budget-views";
+import { DatabaseView, GeneralSettingsView, RetentionView } from "./settings-views";
 import { col, type ModuleSections, type SectionContext } from "./types";
 
 async function UserManagement({ t, user }: SectionContext) {
@@ -46,7 +48,7 @@ async function UserManagement({ t, user }: SectionContext) {
 }
 
 export const settingsSections: ModuleSections<"settings"> = {
-  umum: { view: { kind: "pending", milestone: "M8" } },
+  umum: { view: { kind: "custom", render: (ctx) => GeneralSettingsView(ctx) } },
   pengguna: {
     permission: "users:manage",
     notices: [{ key: "users.rolesHelp" }],
@@ -65,7 +67,7 @@ export const settingsSections: ModuleSections<"settings"> = {
     notices: [{ tone: "locked", key: "notices.thresholdsLocked" }],
     view: { kind: "custom", render: () => <ThresholdTable /> },
   },
-  anggaran: { view: { kind: "pending", milestone: "M8" } },
-  retensi: { view: { kind: "pending", milestone: "M8" } },
-  "basis-data": { view: { kind: "pending", milestone: "M8" } },
+  anggaran: { view: { kind: "custom", render: (ctx) => BudgetView(ctx) } },
+  retensi: { view: { kind: "custom", render: (ctx) => RetentionView(ctx) } },
+  "basis-data": { permission: "users:manage", view: { kind: "custom", render: (ctx) => DatabaseView(ctx) } },
 };

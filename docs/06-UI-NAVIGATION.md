@@ -4,6 +4,8 @@
 
 Sidebar kiri (dapat diciutkan) · topbar dengan pemilih **Versi Artefak** aktif dan **indikator gate** · area konten · panel kanan kontekstual (detail/inspector).
 
+**Dasbor** memuat, berurutan: alur proses tujuh tahap (tahap saat ini, input, syarat gate, output, yang kurang, dan tahap berikutnya), evaluasi G1 dengan keputusan Admin, struktur artefak, dan pemetaan domain → aspek → indikator.
+
 **Banner origin.** Bila konteks aktif adalah data `SIMULATED`, sebuah strip berwarna muncul di bawah topbar: *"Mode simulasi — keluaran bukan data penelitian"*. Strip ini tidak dapat ditutup.
 
 ---

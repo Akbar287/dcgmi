@@ -13,7 +13,7 @@ Pakar 5  → Google gemini-*       → persona: SPBE, asesor
 Pakar 6  → Mistral mistral-large → persona: sustainability / public value
 ```
 
-Jumlah kursi dapat diatur. Preset bawaan: **FGD_6** dan **DELPHI_8** sesuai R1–V1.7 §3.7.1 dan §3.8.1.
+Jumlah kursi dapat diatur. Preset bawaan: **FGD_6** dan **DELPHI_8** sesuai R1–V1.7 §3.7.1 dan §3.8.1. Komposisi bidang tiap preset didefinisikan di `lib/panel/presets.ts` (ukuran panel dibaca dari `METHOD`); `lib/panel/composition.ts` memvalidasi komposisi, isolasi pakar baru (`ARTIFACT_ONLY`), kecocokan bidang pakar–kursi, persona `APPROVED`, provider disetujui, serta memberi peringatan bila dua kursi memakai model yang sama.
 
 ---
 
@@ -88,9 +88,13 @@ const PersonaExtractionSchema = z.object({
 });
 ```
 
+> **Status implementasi (26 September 2026).** Atas keputusan peneliti, persona brief **diisi manual** oleh peneliti dari pembacaan CV (`/experts/persona/[expertId]`); unggah CV dan `generateObject` ekstraksi belum dibangun, sehingga tidak ada isi CV yang diproses aplikasi atau dikirim ke provider. Skema field tetap `PersonaExtractionSchema` di atas (`lib/persona/schema.ts`).
+
 ### 4.3 Apa yang **tidak boleh** masuk
 
 Nama, gelar, institusi, kota, judul publikasi spesifik, nomor, alamat, atau apa pun yang memungkinkan identifikasi. Filter de-identifikasi berjalan **sebelum** brief disimpan, dan lagi sebelum brief dikirim ke provider. Brief yang gagal filter tidak dapat di-`APPROVED`.
+
+Filter saat ini (`lib/persona/deidentify.ts`) berbasis aturan, bukan NER: gelar akademik, email, tautan, nomor telepon, nomor ≥6 digit (NIP/NIDN/ORCID), nama institusi berawalan (Universitas/Institut/…), singkatan PT umum, nama kota/daerah, judul dalam tanda kutip, serta **daftar tolak per pakar** dari `Expert.displayName`/`affiliation` dan `PanelistIdentity` (nama, email, institusi — termasuk bagian nama ≥4 huruf). Filter sengaja konservatif; setiap temuan memblokir persetujuan dan peneliti tetap meninjau teks. Daftar identitas hanya dibaca di server.
 
 ### 4.4 Template system prompt kursi
 
@@ -154,6 +158,14 @@ Validasi: `quote` harus benar-benar substring dari utterance kursi tersebut. Bil
 
 ---
 
+### Status implementasi M5 (26 September 2026)
+
+- Peran FGD di `lib/ai/fgd.ts`, prompt berversi di `lib/ai/prompts/fgd.ts` (id + version sesuai docs/09, blok BATAS SIMULASI pada setiap prompt kursi), skema `VoteSchema`/`NoteExtractionSchema` di `lib/ai/schemas.ts`.
+- Model: provider langsung atau **Vercel AI Gateway** (`provider: gateway`, `AI_GATEWAY_API_KEY`, model `keluarga/model`), hanya keluarga yang disetujui docs/07 §5 (`lib/ai/models.ts`).
+- `MOCK_AI=1`: `MockLanguageModelV4` menjalankan jalur AI SDK yang sama dengan fixture deterministik (`lib/ai/mock/fgd-fixtures.ts`), semua teks bertanda `[MOCK]`.
+- Koordinasi di `lib/fgd/run-item.ts` (bukan `lib/ai`, agar `lib/ai` tetap tidak mengimpor `lib/method`): satu komponen per langkah — fasilitator → argumen paralel (urutan diacak dari seed) → tanggapan silang opsional → voting terpisah → notulis (kutipan diverifikasi verbatim) → `applyFgdDecisionRule`. Gagal skema 2× → komponen `FAILED`, sesi berhenti, tidak ada data setengah tersimpan.
+- Belum: evaluator G2, "Terapkan ke A1.1", metrik kesamaan keluaran antar-kursi, pemutus anggaran biaya.
+
 ## 6. Voting
 
 Voting **tidak** diambil dari teks bebas. Setiap kursi dipanggil ulang dengan `generateObject`:
@@ -182,12 +194,15 @@ Rating Delphi memakai `generateObject`:
 ```ts
 const RatingSchema = z.object({
   relevance:   z.number().int().min(1).max(4),
+  reason:      z.string().min(10).max(400),   // alasan singkat kursi (M6)
   clarityFlag: z.boolean(),
   clarityNote: z.string().max(300).nullable(),
 });
 ```
 
 Relevansi dan kejelasan sengaja dipisah agar skor relevansi tidak tercampur mutu redaksi.
+
+**Implementasi (M6):** prompt `delphi.seat.rate` v1.0.0 (`lib/ai/prompts/delphi.ts`). Kursi `FULL` pada R1 menerima ringkasan keputusan FGD per butir dari hasil terhitung versi induk (disimpan sebagai snapshot di `DelphiRound.settings`); kursi `ARTIFACT_ONLY` tidak pernah menerimanya — diuji di `lib/ai/__tests__/delphi-ai.test.ts`. R2/R3 menambahkan umpan balik anonim `buildRoundFeedback` dan penanda apakah butir direvisi. Ambang Tabel 3.6 tidak pernah muncul di prompt. Kursi yang gagal setelah percobaan ulang menyimpan `relevance = null` dan menghentikan ronde.
 
 ---
 
@@ -207,6 +222,14 @@ Matriks disusun dari jawaban pasangan; resiprokal diisi otomatis. Untuk 8 domain
 
 Bila `CR >= 0.10`, sistem mengembalikan ke kursi yang sama dengan daftar pasangan paling tidak konsisten dan meminta peninjauan — **tidak** memperbaiki angka secara otomatis (§3.9.2). Maksimal 2 putaran peninjauan; setelah itu matriks ditandai `RETURNED_UNRESOLVED` dan dikeluarkan dari agregasi, dengan catatan di laporan.
 
+**Implementasi (26 Sep 2026):** prompt `ahp.seat.pairwise` dan `ahp.seat.review` v1.0.0 (`lib/ai/prompts/ahp.ts`). Skema menambahkan `reason` minimal 10 karakter dan mewajibkan `EQUAL` ⇔ intensitas 1. Peninjauan hanya menanyakan ulang pasangan yang dikembalikan (`mostInconsistentPairs`, 3 teratas) dengan penilaian kursi sebelumnya dan rasio yang disiratkan penilaian kursi itu sendiri; ambang CR dan nilai "benar" tidak pernah diberikan. Pasangan lain dipertahankan apa adanya.
+
+---
+
+## 8a. Penskoran: asesor simulasi
+
+Prompt `scoring.assessor.evidence` v1.0.0 (`lib/ai/prompts/scoring.ts`), tanpa persona: asesor menerima profil institusi **fiktif**, paket indikator (definisi, rubrik 1–5), dan daftar bukti berlabel `E1…En`. Keluaran `AssessmentSchema`: `missingKind`, `level` (null hanya untuk `MISSING_ADMINISTRATIF`), `satisfiedEvidence`, `evidenceLocator` (kutipan verbatim profil), `rationale`. Keluaran yang tidak konsisten, locator yang bukan kutipan, atau level di atas `evidenceLevelCap` ditolak dan dicoba sekali lagi; kegagalan kedua menghentikan asesmen — tidak ada nilai default dan tidak ada pemangkasan level. Bobot, rumus, dan plafon tidak pernah muncul di prompt.
+
 ---
 
 ## 9. Biaya dan konkurensi
@@ -216,6 +239,8 @@ Bila `CR >= 0.10`, sistem mengembalikan ke kursi yang sama dengan daftar pasanga
 - Pemutus otomatis bila `spentUsd > budgetUsd`.
 - Retry: 2 kali dengan exponential backoff untuk kegagalan jaringan. Kegagalan skema **tidak** di-retry tanpa batas — 2 percobaan lalu `FAILED`.
 - Setiap panggilan dicatat: model, `promptHash`, token masuk/keluar, latensi, biaya.
+
+**Implementasi (26 Sep 2026):** `lib/ai/call.ts` menjalankan setiap panggilan di dalam *call sink* (`withCallSink`, AsyncLocalStorage) yang dipasang lapisan koordinasi (`lib/*/run-*.ts`, `lib/db/repository/model-calls.ts`). Sebelum panggilan dikirim, estimasi batas atasnya (karakter prompt / 3,5 × harga input + `maxOutputTokens` × harga output) dibandingkan dengan sisa **anggaran sesi**, **anggaran run**, dan **plafon bulanan** (Pengaturan → Anggaran); bila melampaui, panggilan ditolak (`BudgetExceededError`) dan sesi berhenti dengan alasan ANGGARAN — bukan dicatat sebagai kegagalan kursi. Dengan anggaran apa pun yang berlaku, model tanpa harga ditolak. Setelah panggilan (juga percobaan yang gagal skema), satu baris `ModelCall` ditulis dengan biaya dari harga profil model; `MOCK_AI` selalu $0. Harga per 1.000 token diambil dari katalog Gateway (`priceSource = CATALOG`) atau diisi manual (`MANUAL`, tidak ditimpa katalog).
 
 ---
 

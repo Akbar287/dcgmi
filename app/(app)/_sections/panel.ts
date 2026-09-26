@@ -1,5 +1,7 @@
-import { listModelProfiles, listPanelConfigs, listPanelSeats, listProviders } from "@/lib/db/repository/panel";
+import { listModelProfiles, listPanelConfigs, listProviders } from "@/lib/db/repository/panel";
 
+import { GatewayView } from "./fgd-views";
+import { ConnectionTestView, SeatEditorView } from "./panel-views";
 import { col, type ModuleSections } from "./types";
 
 export const panelSections: ModuleSections<"panel"> = {
@@ -23,6 +25,7 @@ export const panelSections: ModuleSections<"panel"> = {
     view: {
       kind: "table",
       scope: "global",
+      header: (ctx) => GatewayView(ctx),
       load: () => listModelProfiles(),
       columns: (t) => [
         col(t, "provider", "text", { facet: true }),
@@ -49,23 +52,12 @@ export const panelSections: ModuleSections<"panel"> = {
     },
   },
   kursi: {
-    view: {
-      kind: "table",
-      scope: "global",
-      load: () => listPanelSeats(),
-      columns: (t) => [
-        col(t, "config", "text", { facet: true }),
-        col(t, "seat"),
-        col(t, "field", "enum", { facet: true }),
-        col(t, "panelCode", "code"),
-        col(t, "provider", "text", { facet: true }),
-        col(t, "model"),
-        col(t, "temperature", "number"),
-        col(t, "seed", "number", { hidden: true }),
-        col(t, "newMember", "boolean"),
-        col(t, "contextScope", "code"),
-      ],
-    },
+    permission: "panel:manage",
+    view: { kind: "custom", render: () => SeatEditorView() },
   },
-  "uji-koneksi": { view: { kind: "pending", milestone: "M4" } },
+  "uji-koneksi": {
+    permission: "panel:manage",
+    notices: [{ key: "panelAdmin.ping.note" }],
+    view: { kind: "custom", render: () => ConnectionTestView() },
+  },
 };

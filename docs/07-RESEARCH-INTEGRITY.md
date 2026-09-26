@@ -42,6 +42,8 @@ Isi peringatan: *"KELUARAN SIMULASI — controlled dry-run internal. Bukan data 
 
 Tidak ada parameter untuk menonaktifkannya.
 
+**Implementasi:** `lib/export/watermark.ts` (murni, diuji) menentukan asal data dari baris ekspor; apa pun yang tidak terbukti REAL saja diberi watermark, termasuk tabel tanpa kolom origin di modul simulasi dan tabel artefak. Berlaku untuk `/api/export/table`, ekspor rekalkulasi, dan paket reproduksibilitas. Kriteria §6.5 diperiksa langsung di Audit → Paket Reproduksi.
+
 ### P5 — Banner UI permanen
 Strip peringatan di bawah topbar setiap kali konteks aktif `SIMULATED`. Tidak dapat ditutup. Muncul juga pada pratinjau cetak dan tangkapan layar.
 
@@ -97,6 +99,8 @@ Hanya provider berikut yang boleh menerima `PersonaBrief` dan konten artefak:
 | Model lokal | Disetujui | Pilihan paling aman untuk konten sensitif |
 
 Menambah provider di luar daftar ini memerlukan keputusan peneliti utama dan pembaruan dokumen ini.
+
+**Perantara yang disetujui — Vercel AI Gateway** (keputusan peneliti utama, 26 September 2026). Satu `AI_GATEWAY_API_KEY` dipakai untuk memanggil model provider di atas melalui Gateway. Konsekuensinya: `PersonaBrief` (sudah de-identifikasi) dan isi artefak melewati infrastruktur Vercel sebelum sampai ke provider model. Aplikasi hanya menerima model Gateway dari keluarga yang disetujui di tabel ini (`openai/`, `anthropic/`, `google/`; bersyarat: `deepseek/`, `alibaba/`, `mistral/`, `xai/`) — dicek di `lib/ai/models.ts`. Larangan di bawah tetap berlaku sepenuhnya untuk jalur Gateway.
 
 **Jangan pernah dikirim ke provider mana pun:** identitas panelis, berkas CV mentah, bukti keamanan institusi, temuan audit, log sistem, atau dokumen sensitif perguruan tinggi (§3.13.1).
 

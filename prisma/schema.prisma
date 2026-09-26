@@ -154,6 +154,7 @@ model Domain {
   sdgTags    String[]
   slrStrings String[]
   aspects    Aspect[]
+
   @@unique([versionId, code])
 }
 
@@ -166,6 +167,7 @@ model Aspect {
   name       String
   rationale  String?
   indicators Indicator[]
+
   @@unique([domainId, code])
 }
 
@@ -182,10 +184,13 @@ model Indicator {
   sources               String[]
   isControlledException Boolean               @default(false)
   exceptionNote         String?
+  /// Soft delete in a DRAFT derived version (SPECIFICATION §4.1: versioned delete = soft delete + ChangeLogEntry).
+  deletedAt             DateTime?
   rubricLevels          RubricLevel[]
   evidence              EvidenceRequirement[]
   delphiRatings         DelphiRating[]
   scores                IndicatorScore[]
+
   @@unique([aspectId, code])
 }
 
@@ -197,6 +202,7 @@ model RubricLevel {
   label       String
   descriptor  String
   cumulative  Boolean   @default(true)
+
   @@unique([indicatorId, level])
 }
 
@@ -222,6 +228,7 @@ model ChangeLogEntry {
   impactNote     String?
   actorId        String?
   createdAt      DateTime        @default(now())
+
   @@index([versionId, targetCode])
 }
 
@@ -236,20 +243,21 @@ model GateRecord {
   decidedById String?
   decidedAt   DateTime?
   note        String?
+
   @@unique([versionId, gate])
 }
 
 model Expert {
-  id          String       @id @default(cuid())
-  panelCode   String       @unique
+  id          String        @id @default(cuid())
+  panelCode   String        @unique
   displayName String?
   field       ExpertField
   affiliation String?
-  coiDeclared Boolean      @default(false)
+  coiDeclared Boolean       @default(false)
   coiNote     String?
-  inFgd       Boolean      @default(false)
-  inDelphi    Boolean      @default(false)
-  inAhp       Boolean      @default(false)
+  inFgd       Boolean       @default(false)
+  inDelphi    Boolean       @default(false)
+  inAhp       Boolean       @default(false)
   cvFileKey   String?
   persona     PersonaBrief?
   seats       PanelSeat[]
@@ -295,12 +303,15 @@ model ModelProfile {
   contextWindow   Int?
   inputCostPer1k  Decimal?    @db.Decimal(10, 6)
   outputCostPer1k Decimal?    @db.Decimal(10, 6)
+  /// CATALOG (Gateway) | MANUAL — a manual price is never overwritten by the catalog.
+  priceSource     String?
   seats           PanelSeat[]
+
   @@unique([providerId, modelId])
 }
 
 model PanelConfig {
-  id                 String       @id @default(cuid())
+  id                 String        @id @default(cuid())
   name               String
   preset             String
   panelSize          Int
@@ -310,7 +321,7 @@ model PanelConfig {
   fgdSessions        FgdSession[]
   delphiRounds       DelphiRound[]
   ahpSessions        AhpSession[]
-  createdAt          DateTime     @default(now())
+  createdAt          DateTime      @default(now())
 }
 
 model PanelSeat {
@@ -322,12 +333,13 @@ model PanelSeat {
   expertId       String?
   expert         Expert?      @relation(fields: [expertId], references: [id])
   modelProfileId String
-  modelProfile   ModelProfile  @relation(fields: [modelProfileId], references: [id])
+  modelProfile   ModelProfile @relation(fields: [modelProfileId], references: [id])
   field          ExpertField
   temperature    Float        @default(0.7)
   seed           Int?
   isNewMember    Boolean      @default(false)
   contextScope   String       @default("FULL")
+
   @@unique([configId, seatIndex])
 }
 
@@ -341,6 +353,15 @@ model FgdSession {
   mode         RunMode         @default(STEP)
   status       RunStatus       @default(QUEUED)
   agendaPreset String          @default("CORONG_11")
+  /// Seeds speaking order and model sampling so a run can be reproduced (SPECIFICATION §5).
+  seed         Int             @default(0)
+  /// Stage/domain selection, cross-talk rounds, prompt versions, and gateway use.
+  settings     Json?
+  /// Optional USD budget; calls are refused before they would exceed it (docs/04 §9).
+  budgetUsd    Decimal?        @db.Decimal(10, 4)
+  runId        String?
+  createdById  String?
+  createdAt    DateTime        @default(now())
   startedAt    DateTime?
   endedAt      DateTime?
   stages       FgdStage[]
@@ -363,6 +384,12 @@ model FgdItem {
   stage       FgdStage           @relation(fields: [stageId], references: [id], onDelete: Cascade)
   targetType  String
   targetCode  String
+  order       Int                @default(0)
+  title       String             @default("")
+  status      RunStatus          @default(QUEUED)
+  error       String?
+  startedAt   DateTime?
+  endedAt     DateTime?
   utterances  FgdUtterance[]
   positions   FgdPosition[]
   suggestions FgdSuggestion[]
@@ -370,28 +397,34 @@ model FgdItem {
 }
 
 model FgdUtterance {
-  id         String     @id @default(cuid())
-  itemId     String
-  item       FgdItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  speaker    String
-  seatIndex  Int?
-  turn       Int
-  content    String
-  modelId    String?
-  promptHash String?
-  tokensIn   Int?
-  tokensOut  Int?
-  latencyMs  Int?
-  createdAt  DateTime   @default(now())
+  id            String   @id @default(cuid())
+  itemId        String
+  item          FgdItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  speaker       String
+  seatIndex     Int?
+  turn          Int
+  /// PRESENT | ARGUE | CROSSTALK | VOTE_REASON | NOTE
+  kind          String   @default("ARGUE")
+  promptId      String?
+  promptVersion String?
+  content       String
+  modelId       String?
+  promptHash    String?
+  tokensIn      Int?
+  tokensOut     Int?
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
 }
 
 model FgdPosition {
-  id        String          @id @default(cuid())
-  itemId    String
-  item      FgdItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  seatIndex Int
-  position  FgdPositionType
-  reason    String
+  id             String          @id @default(cuid())
+  itemId         String
+  item           FgdItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  seatIndex      Int
+  position       FgdPositionType
+  reason         String
+  proposedAction ActionType?
+
   @@unique([itemId, seatIndex])
 }
 
@@ -405,93 +438,169 @@ model FgdSuggestion {
   rationale        String
   adopted          Boolean?
   notAdoptedReason String?
+  /// Revision task state in the derived version (A1.1): set when the edit is done.
+  appliedAt        DateTime?
+  appliedById      String?
+  appliedNote      String?
 }
 
 model FgdDecisionRecord {
-  id        String          @id @default(cuid())
-  itemId    String          @unique
-  item      FgdItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  decision  FgdDecisionType
-  tally     Json
-  ruleFired String
-  note      String?
-  createdAt DateTime        @default(now())
+  id             String          @id @default(cuid())
+  itemId         String          @unique
+  item           FgdItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  decision       FgdDecisionType
+  tally          Json
+  ruleFired      String
+  note           String?
+  /// Researcher's resolution of a PEMBAHASAN_KHUSUS decision (required for G2).
+  resolutionNote String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime        @default(now())
 }
 
 model DelphiRound {
-  id            String          @id @default(cuid())
+  id            String             @id @default(cuid())
   versionId     String
-  version       ArtifactVersion @relation(fields: [versionId], references: [id])
+  version       ArtifactVersion    @relation(fields: [versionId], references: [id])
   configId      String
-  config        PanelConfig     @relation(fields: [configId], references: [id])
-  dataOrigin    DataOrigin      @default(SIMULATED)
+  config        PanelConfig        @relation(fields: [configId], references: [id])
+  dataOrigin    DataOrigin         @default(SIMULATED)
   roundNumber   Int
-  status        RunStatus       @default(QUEUED)
+  status        RunStatus          @default(QUEUED)
   panelSize     Int
   ratings       DelphiRating[]
   results       DelphiItemResult[]
   scaleSCviAve  Float?
+  /// Seeds seat order and model sampling so a round can be reproduced (SPECIFICATION §5).
+  seed          Int                @default(0)
+  /// Prompt versions, estimated calls, gateway use.
+  settings      Json?
+  /// Optional USD budget; calls are refused before they would exceed it (docs/04 §9).
+  budgetUsd     Decimal?           @db.Decimal(10, 4)
+  runId         String?
+  /// Indicator codes rated in this round (R1 = all; R2+ = itemsForNextRound).
+  scopeCodes    String[]           @default([])
+  error         String?
+  createdById   String?
+  createdAt     DateTime           @default(now())
+  startedAt     DateTime?
+  endedAt       DateTime?
+  /// Researcher finalization; only finalized rounds count for G3 (docs/05 §6).
+  finalizedAt   DateTime?
+  finalizedById String?
+
   @@unique([versionId, roundNumber])
 }
 
 model DelphiRating {
-  id          String       @id @default(cuid())
-  roundId     String
-  round       DelphiRound  @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  indicatorId String
-  indicator   Indicator    @relation(fields: [indicatorId], references: [id])
-  seatIndex   Int
-  relevance   Int?
-  clarityFlag Boolean      @default(false)
-  clarityNote String?
-  dataOrigin  DataOrigin   @default(SIMULATED)
+  id            String      @id @default(cuid())
+  roundId       String
+  round         DelphiRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  indicatorId   String
+  indicator     Indicator   @relation(fields: [indicatorId], references: [id])
+  seatIndex     Int
+  relevance     Int?
+  clarityFlag   Boolean     @default(false)
+  clarityNote   String?
+  dataOrigin    DataOrigin  @default(SIMULATED)
+  /// Seat's short rationale for the relevance score.
+  reason        String?
+  /// Set when the call failed after retries; relevance stays null (never imputed).
+  error         String?
+  promptId      String?
+  promptVersion String?
+  modelId       String?
+  promptHash    String?
+  tokensIn      Int?
+  tokensOut     Int?
+  latencyMs     Int?
+  createdAt     DateTime    @default(now())
+
   @@unique([roundId, indicatorId, seatIndex])
 }
 
 model DelphiItemResult {
-  id          String      @id @default(cuid())
-  roundId     String
-  round       DelphiRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  indicatorId String
-  iCvi        Float
-  median      Float
-  iqr         Float
-  validRaters Int
-  decision    DelphiDecision
-  reason      String?
+  id                String         @id @default(cuid())
+  roundId           String
+  round             DelphiRound    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  indicatorId       String
+  iCvi              Float
+  median            Float
+  iqr               Float
+  validRaters       Int
+  decision          DelphiDecision
+  reason            String?
+  /// Seats that flagged clarity; the researcher decides whether it is critical.
+  clarityFlags      Int            @default(0)
+  clarityCritical   Boolean?
+  constructConflict Boolean        @default(false)
+  /// Researcher's note; mandatory for HAPUS_DARI_INTI (docs/05 §3.3).
+  researcherNote    String?
+  reviewedById      String?
+  reviewedAt        DateTime?
+
   @@unique([roundId, indicatorId])
 }
 
 model AhpSession {
-  id          String          @id @default(cuid())
+  id          String                @id @default(cuid())
   versionId   String
-  version     ArtifactVersion @relation(fields: [versionId], references: [id])
+  version     ArtifactVersion       @relation(fields: [versionId], references: [id])
   configId    String
-  config      PanelConfig     @relation(fields: [configId], references: [id])
-  dataOrigin  DataOrigin      @default(SIMULATED)
+  config      PanelConfig           @relation(fields: [configId], references: [id])
+  dataOrigin  DataOrigin            @default(SIMULATED)
   scope       String
-  status      RunStatus       @default(QUEUED)
-  aggregation String          @default("GEOMETRIC_MEAN")
+  status      RunStatus             @default(QUEUED)
+  aggregation String                @default("GEOMETRIC_MEAN")
   matrices    AhpMatrix[]
   weights     AhpWeight[]
   sensitivity SensitivityScenario[]
+  /// Seeds model sampling and the mock so a session can be reproduced (SPECIFICATION §5).
+  seed        Int                   @default(0)
+  /// Seat scopes, sensitivity scenarios, prompt versions, estimated calls.
+  settings    Json?
+  /// Optional USD budget; calls are refused before they would exceed it (docs/04 §9).
+  budgetUsd   Decimal?              @db.Decimal(10, 4)
+  runId       String?
+  error       String?
+  createdById String?
+  createdAt   DateTime              @default(now())
+  startedAt   DateTime?
+  endedAt     DateTime?
 }
 
 model AhpMatrix {
-  id         String     @id @default(cuid())
-  sessionId  String
-  session    AhpSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  seatIndex  Int
-  level      String
-  parentCode String?
-  size       Int
-  cells      Json
-  lambdaMax  Float?
-  ci         Float?
-  cr         Float?
-  accepted   Boolean    @default(false)
-  revisionOf String?
-  @@unique([sessionId, seatIndex, level, parentCode])
+  id            String     @id @default(cuid())
+  sessionId     String
+  session       AhpSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seatIndex     Int
+  level         String
+  parentCode    String?
+  size          Int
+  /// Element codes in row/column order.
+  elements      String[]   @default([])
+  /// n×n reciprocal matrix; null until every pair is judged.
+  cells         Json?
+  lambdaMax     Float?
+  ci            Float?
+  cr            Float?
+  accepted      Boolean    @default(false)
+  revisionOf    String?
+  /// 0 = first fill; 1–2 = review rounds after CR >= CR_MAX (docs/04 §8).
+  attempt       Int        @default(0)
+  /// PENDING | ACCEPTED | RETURNED | RETURNED_UNRESOLVED
+  status        String     @default("PENDING")
+  /// Pair judgements with the seat's reasons and call logs.
+  pairs         Json?
+  /// Pairs sent back for review (mostInconsistentPairs).
+  returnedPairs Json?
+  error         String?
+  tokensIn      Int?
+  tokensOut     Int?
+  createdAt     DateTime   @default(now())
+
+  @@unique([sessionId, seatIndex, level, parentCode, attempt])
 }
 
 model AhpWeight {
@@ -504,6 +613,7 @@ model AhpWeight {
   seatIndex  Int?
   weight     Float
   archived   Boolean    @default(false)
+
   @@index([sessionId, level, parentCode])
 }
 
@@ -517,39 +627,91 @@ model SensitivityScenario {
   rankChanged Boolean
 }
 
+/// Fictional institution written by the researcher for the scoring dry run
+/// (docs/05 §6 G6). Never real institution data (docs/07).
+model InstitutionProfile {
+  id          String       @id @default(cuid())
+  label       String       @unique
+  description String
+  createdById String?
+  createdAt   DateTime     @default(now())
+  assessments Assessment[]
+}
+
 model Assessment {
-  id               String           @id @default(cuid())
+  id               String              @id @default(cuid())
   versionId        String
   institutionLabel String
-  dataOrigin       DataOrigin       @default(SIMULATED)
+  dataOrigin       DataOrigin          @default(SIMULATED)
   assessorRef      String
-  status           RunStatus        @default(QUEUED)
+  status           RunStatus           @default(QUEUED)
   scores           IndicatorScore[]
+  /// computeIndex result: domain profile first, composite PROVISIONAL.
   rollup           Json?
-  createdAt        DateTime         @default(now())
+  createdAt        DateTime            @default(now())
+  profileId        String?
+  profile          InstitutionProfile? @relation(fields: [profileId], references: [id])
+  modelProfileId   String?
+  /// AHP session whose aggregated (G5) weights the rollup used.
+  weightsSessionId String?
+  seed             Int                 @default(0)
+  settings         Json?
+  /// Optional USD budget; calls are refused before they would exceed it (docs/04 §9).
+  budgetUsd        Decimal?            @db.Decimal(10, 4)
+  runId            String?
+  error            String?
+  createdById      String?
+  startedAt        DateTime?
+  endedAt          DateTime?
+}
+
+/// Upload of `scripts/recompute.py --report` for one export (SPECIFICATION §3.14).
+model RecomputeCheck {
+  id           String   @id @default(cuid())
+  versionId    String
+  exportSha256 String
+  ok           Boolean
+  diffCount    Int
+  report       Json
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([versionId, createdAt])
 }
 
 model IndicatorScore {
-  id              String      @id @default(cuid())
-  assessmentId    String
-  assessment      Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  indicatorId     String
-  indicator       Indicator   @relation(fields: [indicatorId], references: [id])
-  level           Int?
-  missingKind     MissingKind @default(NONE)
-  evidenceLocator String?
-  rationale       String?
+  id                String      @id @default(cuid())
+  assessmentId      String
+  assessment        Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  indicatorId       String
+  indicator         Indicator   @relation(fields: [indicatorId], references: [id])
+  level             Int?
+  missingKind       MissingKind @default(NONE)
+  evidenceLocator   String?
+  rationale         String?
+  /// EvidenceRequirement ids the assessor found satisfied.
+  satisfiedEvidence String[]    @default([])
+  /// evidenceLevelCap at scoring time (docs/05 §5.5).
+  levelCap          Int?
+  promptId          String?
+  promptVersion     String?
+  modelId           String?
+  promptHash        String?
+  tokensIn          Int?
+  tokensOut         Int?
+  error             String?
+
   @@unique([assessmentId, indicatorId])
 }
 
 model Form {
-  id           String        @id @default(cuid())
-  slug         String        @unique
+  id           String         @id @default(cuid())
+  slug         String         @unique
   title        String
   purpose      String
   instructions String?
   versionLabel String
-  status       FormStatus    @default(HOLD)
+  status       FormStatus     @default(HOLD)
   stageTag     Stage?
   /// SHA-256 of the verified source snapshot the form was built from.
   sourceSha256 String?
@@ -559,7 +721,7 @@ model Form {
   closedAt     DateTime?
   sections     FormSection[]
   responses    FormResponse[]
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime       @default(now())
 }
 
 model FormSection {
@@ -586,6 +748,7 @@ model FormField {
   options   Json?
   config    Json?
   branching Json?
+
   @@unique([sectionId, key])
 }
 
@@ -606,18 +769,25 @@ model FormResponse {
 }
 
 model PipelineRun {
-  id         String    @id @default(cuid())
-  name       String
-  versionId  String
-  configId   String
-  mode       RunMode   @default(STEP)
-  status     RunStatus @default(QUEUED)
-  stagesPlan Json
-  budgetUsd  Decimal?  @db.Decimal(10, 4)
-  spentUsd   Decimal   @default(0) @db.Decimal(10, 4)
-  startedAt  DateTime?
-  endedAt    DateTime?
-  steps      RunStep[]
+  id          String    @id @default(cuid())
+  name        String
+  /// Version the run started from (FGD source); later steps move to derived versions.
+  versionId   String
+  configId    String
+  mode        RunMode   @default(STEP)
+  status      RunStatus @default(QUEUED)
+  /// Designer configuration: panels, agenda, AHP scopes/scenarios, assessor, profiles.
+  stagesPlan  Json
+  budgetUsd   Decimal?  @db.Decimal(10, 4)
+  spentUsd    Decimal   @default(0) @db.Decimal(10, 4)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  steps       RunStep[]
+  /// Why the run is paused: WAITING_GATE:<gate> | WAITING_RESEARCHER:<task> | STEP_DONE.
+  waitReason  String?
+  error       String?
+  createdById String?
+  createdAt   DateTime  @default(now())
 }
 
 model RunStep {
@@ -635,6 +805,13 @@ model RunStep {
   costUsd     Decimal     @default(0) @db.Decimal(10, 4)
   startedAt   DateTime?
   endedAt     DateTime?
+  /// Session this step drives (FgdSession | ArtifactVersion | DelphiRound | AhpSession | Assessment).
+  refType     String?
+  refId       String?
+  /// Version the step works on.
+  versionId   String?
+  waitReason  String?
+  detail      Json?
 }
 
 model AuditEvent {
@@ -646,6 +823,7 @@ model AuditEvent {
   targetId   String?
   payload    Json?
   createdAt  DateTime @default(now())
+
   @@index([targetType, targetId])
   @@index([createdAt])
 }
@@ -667,10 +845,47 @@ model User {
 }
 
 model PanelistIdentity {
-  id          String @id @default(cuid())
-  panelCode   String @unique
+  id          String  @id @default(cuid())
+  panelCode   String  @unique
   fullName    String
   email       String?
   institution String?
   note        String?
+}
+
+/// One row per model call across FGD, Delphi, AHP, scoring and pings: the
+/// cost ledger and the unified model log (SPECIFICATION §4.9–§4.10).
+model ModelCall {
+  id            String     @id @default(cuid())
+  createdAt     DateTime   @default(now())
+  /// FGD | DELPHI | AHP | SCORING | PING
+  kind          String
+  refType       String
+  refId         String
+  runId         String?
+  versionId     String?
+  dataOrigin    DataOrigin @default(SIMULATED)
+  modelId       String
+  promptId      String
+  promptVersion String
+  promptHash    String
+  tokensIn      Int?
+  tokensOut     Int?
+  latencyMs     Int?
+  /// null = price unknown for this model.
+  costUsd       Decimal?   @db.Decimal(12, 6)
+  ok            Boolean    @default(true)
+  error         String?
+
+  @@index([refType, refId])
+  @@index([runId])
+  @@index([createdAt])
+}
+
+/// Application settings edited in the console (e.g. monthly budget cap).
+model AppSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }

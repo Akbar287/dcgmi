@@ -27,6 +27,7 @@ export async function GateEvaluationCard({
   recordStatus,
   decidedAt,
   action,
+  hint,
 }: {
   evaluation: GateEvaluation;
   title: string;
@@ -34,6 +35,7 @@ export async function GateEvaluationCard({
   recordStatus: string;
   decidedAt: string | null;
   action?: ReactNode;
+  hint?: string;
 }) {
   const t = await getTranslator();
   const more = (n: number) => t("dashboard.moreItems", { n });
@@ -53,7 +55,7 @@ export async function GateEvaluationCard({
           />
         </CardTitle>
         <CardDescription>
-          {t("dashboard.baselineGateHint")}
+          {hint ?? t("dashboard.baselineGateHint")}
           {recordStatus === "PASSED" && decidedAt ? ` · ${t("dashboard.passedAt", { time: formatDateTime(decidedAt, t.locale) })}` : null}
           {recordStatus !== "PASSED" && evaluation.passed ? ` · ${t("dashboard.pendingAdmin")}` : null}
         </CardDescription>

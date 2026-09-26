@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/repository/ahp";
 import { METHOD } from "@/lib/method/constants";
 
+import { AhpConfigView } from "./ahp-views";
 import { col, type ModuleSections } from "./types";
 import type { Translator } from "@/lib/i18n";
 
@@ -14,6 +15,7 @@ const matrixColumns = (t: Translator) => [
   col(t, "level", "code", { facet: true }),
   col(t, "parent", "code"),
   col(t, "seat"),
+  col(t, "attempt", "number"),
   col(t, "size", "number"),
   col(t, "lambdaMax", "decimal", { digits: 4 }),
   col(t, "ci", "decimal", { digits: 4 }),
@@ -27,13 +29,16 @@ export const ahpSections: ModuleSections<"ahp"> = {
       kind: "table",
       scope: "version",
       load: listAhpSessions,
+      header: (ctx) => AhpConfigView(ctx),
       columns: (t) => [
         col(t, "origin", "origin", { facet: true }),
+        col(t, "createdAt", "date"),
         col(t, "config"),
         col(t, "scope", "code"),
         col(t, "aggregation", "code"),
         col(t, "status", "status"),
         col(t, "matrices", "number"),
+        col(t, "action", "link", { hrefBase: "/ahp/sesi/", linkText: t("ahpSim.openSession") }),
       ],
     },
   },

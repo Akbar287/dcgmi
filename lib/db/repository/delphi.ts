@@ -16,6 +16,8 @@ export async function listDelphiRounds(versionId: string): Promise<FlatRecord[]>
     panelSize: r.panelSize,
     status: r.status,
     ratings: r._count.ratings,
+    scopeItems: r.scopeCodes.length,
+    finalizedAt: r.finalizedAt?.toISOString() ?? null,
     // Stored by the Delphi orchestrator from lib/method/cvi.ts; never computed here.
     sCviAve: r.scaleSCviAve,
   }));
@@ -44,6 +46,9 @@ export async function listDelphiItemResults(versionId: string): Promise<FlatReco
     median: r.median,
     iqr: r.iqr,
     decision: r.decision,
+    clarityFlags: r.clarityFlags,
+    clarityCritical: r.clarityCritical,
     reason: r.reason,
+    researcherNote: r.researcherNote,
   }));
 }

@@ -17,6 +17,10 @@ export type Permission =
   /** PanelistIdentity mapping (R1-V1.7 §3.13.2). */
   | "identity:read"
   | "users:manage"
+  /** Experts, persona briefs, and panel seats (docs/03 Panel & Persona). */
+  | "panel:manage"
+  /** approvePersona is Admin-only (docs/03). */
+  | "persona:approve"
   /** Opening/closing expert forms and exporting REAL expert responses. */
   | "instrument:manage"
   /** Human experts fill only the instruments assigned to them. */
@@ -34,8 +38,10 @@ const GRANTS: Record<Role, readonly Permission[]> = {
     "identity:read",
     "users:manage",
     "instrument:manage",
+    "panel:manage",
+    "persona:approve",
   ],
-  TESTER: ["console:read", "artifact:write", "simulation:run"],
+  TESTER: ["console:read", "artifact:write", "simulation:run", "panel:manage"],
   PAKAR: ["instrument:fill"],
 };
 

@@ -4,12 +4,14 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { FormRunner } from "@/components/organisms/form-runner/form-runner";
 import { ResponseReceipt } from "@/components/organisms/response-receipt";
 import { requirePermission } from "@/lib/auth/session";
+import { loadFormBySlug } from "@/lib/db/repository/form-builder";
 import { getResponseForCode, getRunnerForm } from "@/lib/db/repository/pre-review";
 import { findPanelCode } from "@/lib/db/repository/users";
 import { getTranslator } from "@/lib/i18n/server";
 import type { Answers } from "@/lib/instruments/pre-review/types";
 
 import { declineAction, saveDraftAction, submitAction } from "./actions";
+import { GenericPakarRunner } from "./generic-runner-page";
 
 function metaNumber(meta: unknown, key: string): number | null {
   const v = typeof meta === "object" && meta !== null ? (meta as Record<string, unknown>)[key] : undefined;
@@ -22,6 +24,9 @@ export default async function PreReviewRunnerPage({ params }: PageProps<"/pakar/
   const t = await getTranslator();
   const code = await findPanelCode(user.id);
   if (!code) return <EmptyState icon={UserIcon} title={t("runner.noCodeTitle")} description={t("runner.noCodeBody")} />;
+
+  const generic = await loadFormBySlug(slug);
+  if (generic) return <GenericPakarRunner slug={slug} code={code} loaded={generic} />;
 
   const form = await getRunnerForm(slug);
   const response = form ? await getResponseForCode(form.id, code) : null;

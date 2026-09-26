@@ -31,6 +31,10 @@ export async function listFormResponses(): Promise<FlatRecord[]> {
     origin: r.dataOrigin,
     slug: r.form.slug,
     respondent: r.respondentRef,
+    channel:
+      typeof r.meta === "object" && r.meta !== null && !Array.isArray(r.meta) && (r.meta as Record<string, unknown>).source === "GOOGLE_FORM"
+        ? "GOOGLE_FORM"
+        : "APP",
     completed: r.completed,
     submittedAt: iso(r.submittedAt),
   }));

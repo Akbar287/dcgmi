@@ -17,7 +17,8 @@ export type ColumnKind =
   | "enum"
   | "tags"
   | "fraction"
-  | "exception";
+  | "exception"
+  | "link";
 
 export interface DataTableColumn {
   id: string;
@@ -29,6 +30,10 @@ export interface DataTableColumn {
   digits?: number;
   /** Adds a per-column select filter built from the distinct row values. */
   facet?: boolean;
+  /** `link`: the cell links to `${hrefBase}${row.id}`. */
+  hrefBase?: string;
+  /** `link`: fixed link text instead of the cell value. */
+  linkText?: string;
   /** Hidden until the user enables it from the column menu. */
   hidden?: boolean;
 }

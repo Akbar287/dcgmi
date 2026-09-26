@@ -130,3 +130,24 @@ export function uniformLocalWeights(count: number): number[] {
   out[count - 1] = 1 - acc;
   return out;
 }
+
+/**
+ * Evidence-to-level (SPECIFICATION §4.8, docs/05 §5.5): the highest level L
+ * for which every MANDATORY requirement with minimumFor ≤ L is satisfied.
+ * A requirement without minimumFor applies from LEVEL_MIN. Supporting
+ * (non-mandatory) evidence never caps. The scale floor is LEVEL_MIN. Whether
+ * the descriptor fits is the assessor's judgement; this is only the ceiling.
+ */
+export function evidenceLevelCap(
+  requirements: { id: string; minimumFor: number | null; mandatory: boolean }[],
+  satisfiedIds: string[],
+): number {
+  const satisfied = new Set(satisfiedIds);
+  let cap = METHOD.LEVEL_MIN;
+  for (let level = METHOD.LEVEL_MIN; level <= METHOD.LEVEL_MAX; level++) {
+    const needed = requirements.filter((r) => r.mandatory && (r.minimumFor ?? METHOD.LEVEL_MIN) <= level);
+    if (needed.every((r) => satisfied.has(r.id))) cap = level;
+    else break;
+  }
+  return cap;
+}

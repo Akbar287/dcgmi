@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { isLocale, LOCALE_COOKIE } from "@/lib/i18n";
 
@@ -22,4 +23,13 @@ export async function setLocale(formData: FormData) {
   if (!isLocale(locale)) return;
   (await cookies()).set(LOCALE_COOKIE, locale, { path: "/", maxAge: ONE_YEAR, sameSite: "lax" });
   revalidatePath("/", "layout");
+}
+
+/** Switch the active version, then open a page (pipeline wait links). */
+export async function activateVersionAndGo(formData: FormData) {
+  const versionId = formData.get("versionId");
+  const href = formData.get("href");
+  if (typeof versionId === "string" && versionId) (await cookies()).set(VERSION_COOKIE, versionId, { path: "/", maxAge: ONE_YEAR, sameSite: "lax" });
+  const target = typeof href === "string" && href.startsWith("/") && !href.startsWith("//") ? href : "/";
+  redirect(target);
 }

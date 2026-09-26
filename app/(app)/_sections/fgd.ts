@@ -1,5 +1,6 @@
-import { listFgdDecisions, listFgdSessions, listFgdSuggestions } from "@/lib/db/repository/fgd";
+import { listFgdDecisions, listFgdSessions } from "@/lib/db/repository/fgd";
 
+import { AdoptionView, AgendaPresetView, ApplyView, FgdCreateView, FgdRoomListView } from "./fgd-views";
 import { col, type ModuleSections, type SectionNotice } from "./types";
 
 // R1-V1.7 §3.7.3: every FGD result screen states the rules assist, not validate.
@@ -7,9 +8,11 @@ const RULE_ASSIST: SectionNotice[] = [{ key: "notices.fgdRuleAssist" }];
 
 export const fgdSections: ModuleSections<"fgd"> = {
   sesi: {
+    notices: [{ key: "banner.simulatedDetail" }],
     view: {
       kind: "table",
       scope: "version",
+      header: (ctx) => FgdCreateView(ctx),
       load: listFgdSessions,
       columns: (t) => [
         col(t, "origin", "origin", { facet: true }),
@@ -23,8 +26,8 @@ export const fgdSections: ModuleSections<"fgd"> = {
       ],
     },
   },
-  agenda: { view: { kind: "pending", milestone: "M5" } },
-  ruang: { notices: RULE_ASSIST, view: { kind: "pending", milestone: "M5" } },
+  agenda: { view: { kind: "custom", render: (ctx) => AgendaPresetView(ctx) } },
+  ruang: { notices: RULE_ASSIST, view: { kind: "custom", render: (ctx) => FgdRoomListView(ctx) } },
   keputusan: {
     notices: RULE_ASSIST,
     view: {
@@ -45,21 +48,7 @@ export const fgdSections: ModuleSections<"fgd"> = {
   },
   revisi: {
     notices: RULE_ASSIST,
-    view: {
-      kind: "table",
-      scope: "version",
-      load: listFgdSuggestions,
-      columns: (t) => [
-        col(t, "origin", "origin", { facet: true }),
-        col(t, "target", "code", { facet: true }),
-        col(t, "seat"),
-        col(t, "action", "enum", { facet: true }),
-        col(t, "quote", "long"),
-        col(t, "rationale", "long", { hidden: true }),
-        col(t, "adopted", "boolean"),
-        col(t, "notAdoptedReason", "long"),
-      ],
-    },
+    view: { kind: "custom", render: (ctx) => AdoptionView(ctx) },
   },
-  terapkan: { notices: RULE_ASSIST, view: { kind: "pending", milestone: "M5" } },
+  terapkan: { notices: RULE_ASSIST, view: { kind: "custom", render: (ctx) => ApplyView(ctx) } },
 };

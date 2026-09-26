@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertGate, evaluateAhpGate, evaluateBaselineGate, evaluateDelphiGate, gatesToReopen } from '../gates';
+import { evaluateBaselineGate, gatesToReopen } from '../gates';
 import type { ArtifactSnapshot } from '../gates';
 
 const goodIndicator = (code: string) => ({
@@ -65,51 +65,9 @@ describe('G1 baseline', () => {
   });
 });
 
-describe('G3 Delphi', () => {
-  it('S-CVI di bawah 0,90 memblokir', () => {
-    const r = evaluateDelphiGate({ rounds: [{ roundNumber: 2, sCviAve: 0.88, unresolvedItems: [], panelDeviation: false }] });
-    expect(r.passed).toBe(false);
-    expect(r.unmet[0]).toMatch(/S_CVI_BELOW_THRESHOLD/);
-  });
-  it('deviasi panel memblokir', () => {
-    const r = evaluateDelphiGate({ rounds: [{ roundNumber: 1, sCviAve: 0.95, unresolvedItems: [], panelDeviation: true }] });
-    expect(r.unmet).toContain('PANEL_SIZE_DEVIATION');
-  });
-  it('butir belum selesai sebelum ronde 3 memblokir', () => {
-    const r = evaluateDelphiGate({ rounds: [{ roundNumber: 2, sCviAve: 0.95, unresolvedItems: ['C12'], panelDeviation: false }] });
-    expect(r.unmet.some((u) => u.startsWith('UNRESOLVED_ITEMS'))).toBe(true);
-  });
-  it('setelah ronde 3 butir sisa dilaporkan terbuka, tidak memblokir', () => {
-    const r = evaluateDelphiGate({ rounds: [{ roundNumber: 3, sCviAve: 0.95, unresolvedItems: ['C12'], panelDeviation: false }] });
-    expect(r.passed).toBe(true);
-    expect(r.warnings[0]).toMatch(/ITEMS_REPORTED_AS_UNFINISHED/);
-  });
-});
+// G3 Delphi: see delphi-gate.test.ts (per-item evaluator, docs/05 §6).
 
-describe('G5 AHP', () => {
-  it('menolak AHP sebelum content lock', () => {
-    const r = evaluateAhpGate({ contentLocked: false, matrices: [{ seatIndex: 1, cr: 0.05, accepted: true }], sensitivityRun: true });
-    expect(r.unmet).toContain('CONTENT_NOT_LOCKED');
-    expect(() => assertGate(r)).toThrowError(/G5_AHP/);
-  });
-  it('matriks tidak konsisten jadi peringatan, bukan penghalang, selama masih ada yang diterima', () => {
-    const r = evaluateAhpGate({
-      contentLocked: true,
-      matrices: [{ seatIndex: 1, cr: 0.05, accepted: true }, { seatIndex: 2, cr: 0.3, accepted: false }],
-      sensitivityRun: true,
-    });
-    expect(r.passed).toBe(true);
-    expect(r.warnings[0]).toMatch(/MATRIX_RETURNED_TO_SEAT/);
-  });
-  it('semua matriks tidak konsisten memblokir', () => {
-    const r = evaluateAhpGate({ contentLocked: true, matrices: [{ seatIndex: 1, cr: 0.3, accepted: false }], sensitivityRun: true });
-    expect(r.unmet).toContain('ALL_MATRICES_INCONSISTENT');
-  });
-  it('sensitivitas wajib dijalankan', () => {
-    const r = evaluateAhpGate({ contentLocked: true, matrices: [{ seatIndex: 1, cr: 0.05, accepted: true }], sensitivityRun: false });
-    expect(r.unmet).toContain('SENSITIVITY_NOT_RUN');
-  });
-});
+// G5 AHP: see lock-ahp-gate.test.ts (per-group evaluator, docs/05 §6).
 
 describe('buka ulang gate', () => {
   it('perubahan setelah content lock mengembalikan ke Delphi dan membatalkan AHP', () => {

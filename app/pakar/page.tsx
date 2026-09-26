@@ -8,6 +8,7 @@ import { PageHeading } from "@/components/molecules/page-heading";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requirePermission } from "@/lib/auth/session";
+import { listGenericFormsForCode } from "@/lib/db/repository/form-builder";
 import { listFormsForCode } from "@/lib/db/repository/pre-review";
 import { findPanelCode } from "@/lib/db/repository/users";
 import { getTranslator } from "@/lib/i18n/server";
@@ -20,7 +21,7 @@ export default async function PakarPage() {
   const user = await requirePermission("instrument:fill");
   const t = await getTranslator();
   const code = await findPanelCode(user.id);
-  const forms = code ? await listFormsForCode(code) : [];
+  const forms = code ? [...(await listFormsForCode(code)), ...(await listGenericFormsForCode(code))] : [];
 
   return (
     <>

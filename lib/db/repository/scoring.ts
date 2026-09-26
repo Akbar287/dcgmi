@@ -15,6 +15,7 @@ export async function listAssessments(versionId: string): Promise<FlatRecord[]> 
     assessor: a.assessorRef,
     status: a.status,
     scores: a._count.scores,
+    action: a.id,
     createdAt: iso(a.createdAt),
   }));
 }

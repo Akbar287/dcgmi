@@ -9,12 +9,15 @@ toleransi adalah bug yang memblokir rilis.
 
 Pakai:
   python scripts/recompute.py export.json --check
+  python scripts/recompute.py export.json --report laporan.json
   python scripts/recompute.py --self-test
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import platform
 import sys
 
 import numpy as np
@@ -145,7 +148,7 @@ def compute_index(domains: list[dict]) -> dict:
 
 
 # ── Pemeriksaan silang ────────────────────────────────────────────────
-def check(export: dict) -> int:
+def compare(export: dict) -> list[str]:
     diffs: list[str] = []
 
     for item in export.get("delphiItems", []):
@@ -173,6 +176,14 @@ def check(export: dict) -> int:
             if abs(w - m["reported"]["weights"][i]) > TOLERANCE:
                 diffs.append(f"matriks kursi {m['seatIndex']}.w[{i}] berbeda")
 
+    for g in export.get("ahpAggregates", []):
+        mine = aggregate_geometric(g["matrices"])
+        for i, w in enumerate(mine["weights"]):
+            if abs(w - g["reported"]["weights"][i]) > TOLERANCE:
+                diffs.append(f"agregat {g['group']}.w[{i}]: app={g['reported']['weights'][i]} py={w}")
+        if mine["included"] != g["reported"]["included"]:
+            diffs.append(f"agregat {g['group']}: jumlah matriks diikutkan berbeda")
+
     for a in export.get("assessments", []):
         mine = compute_index(a["domains"])
         rep = a["reported"]
@@ -187,6 +198,11 @@ def check(export: dict) -> int:
             elif val is not None and abs(val - other) > TOLERANCE:
                 diffs.append(f"asesmen {a['id']}.{code}: app={other} py={val}")
 
+    return diffs
+
+
+def check(export: dict) -> int:
+    diffs = compare(export)
     if diffs:
         print("PERBEDAAN DITEMUKAN:", file=sys.stderr)
         for d in diffs:
@@ -265,6 +281,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("export", nargs="?", help="berkas JSON ekspor run")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--report", metavar="PATH", help="tulis laporan JSON untuk diunggah ke aplikasi (G6)")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
 
@@ -272,5 +289,26 @@ if __name__ == "__main__":
         sys.exit(self_test())
     if not args.export:
         ap.error("berikan berkas ekspor atau --self-test")
-    with open(args.export, encoding="utf-8") as fh:
-        sys.exit(check(json.load(fh)))
+    with open(args.export, "rb") as fh:
+        raw = fh.read()
+    export = json.loads(raw.decode("utf-8"))
+    if args.report:
+        # The app accepts the report only for the export it can regenerate
+        # byte for byte (same SHA-256), so a stale or edited file is refused.
+        diffs = compare(export)
+        report = {
+            "tool": "scripts/recompute.py",
+            "exportSha256": hashlib.sha256(raw).hexdigest(),
+            "tolerance": TOLERANCE,
+            "ok": not diffs,
+            "diffCount": len(diffs),
+            "diffs": diffs,
+            "counts": {k: len(export.get(k, [])) for k in ("delphiItems", "ahpMatrices", "ahpAggregates", "assessments")},
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+        }
+        with open(args.report, "w", encoding="utf-8") as out:
+            json.dump(report, out, ensure_ascii=False, indent=2)
+        print(("OK" if not diffs else f"{len(diffs)} PERBEDAAN") + f" — laporan ditulis ke {args.report}")
+        sys.exit(0 if not diffs else 1)
+    sys.exit(check(export))

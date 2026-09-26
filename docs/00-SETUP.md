@@ -261,11 +261,19 @@ python scripts/recompute.py --self-test
 Target keluaran:
 
 ```
-39 model diperiksa — OK
+41 model diperiksa — OK
 8 domain, 15 aspek, 43 indikator (7-5-6-6-4-5-4-6) — OK
-Test Files 5 passed · Tests 74 passed
+Test Files 11 passed · Tests 110 passed      (method:verify)
 OK — self-test Python cocok dengan docs/05-METHOD-RULES.md
 ```
+
+**Rekalkulasi independen untuk G6.** `scripts/recompute.py` memerlukan Python 3 + NumPy (mis. `python3 -m venv .venv && .venv/bin/pip install numpy`). Unduh ekspor dari Penskoran → Profil Domain, lalu:
+
+```bash
+python scripts/recompute.py SIM_recompute_<versi>.json --report laporan.json
+```
+
+Unggah `laporan.json` di halaman yang sama. Laporan hanya diterima untuk ekspor dengan SHA-256 yang sama dengan data saat itu.
 
 ---
 
@@ -287,6 +295,8 @@ Ini sangat cocok dengan kebutuhan panel multi-provider: satu `AI_GATEWAY_API_KEY
 **Tapi periksa dulu implikasi tata kelola datanya.** Gateway berarti `PersonaBrief` melewati infrastruktur Vercel sebelum sampai ke provider. `docs/07-RESEARCH-INTEGRITY.md` §5 hanya menyetujui provider yang terdaftar; menambahkan gateway sebagai perantara adalah keputusan yang perlu dicatat di dokumen itu, bukan diputuskan diam-diam saat coding.
 
 Kalau ragu, pakai provider langsung — `Provider.baseUrl` dan `envKeyName` di skema sudah dirancang untuk itu.
+
+> **Keputusan 26 September 2026:** Gateway disetujui peneliti utama dan dicatat di `docs/07-RESEARCH-INTEGRITY.md` §5. Isi `AI_GATEWAY_API_KEY`, lalu tambahkan model di *Panel AI → Profil Model* (atau muat katalog Gateway). Provider langsung tetap didukung.
 
 ---
 

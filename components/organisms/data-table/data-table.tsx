@@ -62,11 +62,13 @@ export function DataTable({
   columns,
   rows,
   storageKey,
+  exportHref,
 }: {
   columns: DataTableColumn[];
   rows: DataTableRow[];
   /** Remembers page size per table (docs/06 §3). */
   storageKey: string;
+  exportHref?: string;
 }) {
   const t = useT();
   const pageSizeKey = `ddc:table:${storageKey}:pageSize`;
@@ -128,7 +130,7 @@ export function DataTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <DataTableToolbar table={table} columns={columns} rows={rows} />
+      <DataTableToolbar table={table} columns={columns} rows={rows} exportHref={exportHref} />
       {/* Wide tables scroll inside their own container (docs/06 §5). */}
       <div className="overflow-x-auto rounded-2xl border">
         <Table>

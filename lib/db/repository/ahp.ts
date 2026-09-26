@@ -17,6 +17,8 @@ export async function listAhpSessions(versionId: string): Promise<FlatRecord[]> 
     aggregation: s.aggregation,
     status: s.status,
     matrices: s._count.matrices,
+    createdAt: s.createdAt.toISOString(),
+    action: s.id,
   }));
 }
 
@@ -26,9 +28,9 @@ export async function listAhpMatrices(versionId: string, onlyReturned = false): 
     where: {
       session: { versionId },
       // R1-V1.7 §3.9.2: CR >= CR_MAX goes back to the seat for review.
-      ...(onlyReturned ? { OR: [{ accepted: false }, { cr: { gte: METHOD.CR_MAX } }] } : {}),
+      ...(onlyReturned ? { status: { in: ["RETURNED", "RETURNED_UNRESOLVED"] }, cr: { gte: METHOD.CR_MAX } } : {}),
     },
-    orderBy: [{ level: "asc" }, { parentCode: "asc" }, { seatIndex: "asc" }],
+    orderBy: [{ level: "asc" }, { parentCode: "asc" }, { seatIndex: "asc" }, { attempt: "asc" }],
     include: { session: { select: { dataOrigin: true } } },
   });
   return rows.map((m) => ({
@@ -41,7 +43,8 @@ export async function listAhpMatrices(versionId: string, onlyReturned = false): 
     lambdaMax: m.lambdaMax,
     ci: m.ci,
     cr: m.cr,
-    status: m.accepted ? "ACCEPTED" : "RETURNED",
+    attempt: m.attempt,
+    status: m.status,
   }));
 }
 

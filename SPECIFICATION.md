@@ -82,6 +82,8 @@ CRUD atas hierarki DCGMI beserta seluruh metadatanya.
 - Badge **controlled exception** pada `C20b` dan `C42`; percobaan hapus/rename memunculkan dialog konfirmasi berlapis dan mencatat keputusan versi.
 - Indikator kesehatan baseline: distribusi indikator per domain harus `7–5–6–6–4–5–4–6` pada A1.0; penyimpangan ditandai, tidak diblokir.
 
+**Status implementasi (26 Sep 2026):** penyunting indikator (`/artefak/sunting/[id]`: isi, rubrik 5 kolom dengan pemeriksaan langsung, bukti, pindah/hapus/pulihkan, riwayat per kode), tambah indikator, ubah domain/aspek, dan Bandingkan Versi. Hanya versi DRAF turunan yang dapat disunting; A1.0 beku. Hapus berupa soft delete. `GABUNG`/`PECAH` belum tersedia.
+
 ### 4.2 Form Builder & Runner
 
 Pengganti Google Forms yang sadar-metodologi.
@@ -101,7 +103,9 @@ Pengganti Google Forms yang sadar-metodologi.
   - Kode pakar (P01–P06) diikat ke akun Pakar oleh Admin; respons hanya menyimpan kode, bertanda `REAL` sejak penulisan pertama.
   - Aturan "alasan dan usulan bermakna wajib bila keputusan selain *Dapat dipertahankan*" ditegakkan saat pindah halaman dan saat kirim; QC ekspor (`normalize_()`) tetap dijalankan dan diuji paritasnya terhadap fungsi asli.
   - "Tidak bersedia" hanya mencatat pilihan dan waktu (tanpa kode/akun).
+  - **Impor respons Google Form** (Instrumen → Impor/Ekspor GForm, Admin): unggah `.xlsx` spreadsheet respons Google → pratinjau tanpa menulis apa pun → konfirmasi → berkas yang sama (SHA-256 dicek) divalidasi ulang dan disimpan dalam satu transaksi sebagai `REAL` dengan jejak sumber (berkas, sheet, baris). Kolom dicocokkan per judul pertanyaan; `Build_Info` (bila ada) harus cocok SHA-256 data dan mode PRODUCTION. Duplikat kode, kode yang sudah punya respons di aplikasi, dan kode TEST ditahan, tidak pernah dipilih otomatis. Jawaban diimpor apa adanya; pelanggaran aturan kualitatif hanya ditandai QC. Stempel waktu dibaca sebagai WIB. Unggah ulang berkas yang sama tidak menduplikasi.
 - **Import/Export Google Forms**: ekspor definisi ke JSON + skrip Apps Script untuk membangun form padanan; impor respons dari CSV Google Forms dengan pemetaan kolom.
+- **Status implementasi builder (26 Sep 2026):** builder seksi/field (teks pendek, paragraf, pilihan tunggal/ganda, dropdown, skala linier, skala relevansi 4 titik dengan penanda kejelasan terpisah, matriks pairwise Saaty dengan CR langsung untuk refleksi responden, tanggal, teks penjelas), percabangan per pilihan dan default seksi dengan pemeriksa siklus/target/keterjangkauan, pratinjau tanpa penyimpanan, uji coba DRY_RUN (SIMULATED, tidak dihitung), aktivasi Admin dengan gate tahap, runner umum untuk Pakar dengan autosave. Belum: unggah berkas (menunggu penyimpanan berkas), ekspor Apps Script/JSON Google Forms dari builder, duplikasi formulir.
 
 ### 4.3 Expert Registry
 
@@ -167,6 +171,8 @@ Aturan ini **membantu keputusan, bukan menghitung validitas** (§3.7.3). UI haru
 
 **Mode eksekusi:** `STEP` (peneliti menyetujui tiap tahap) dan `AUTO` (berjalan sampai selesai, berhenti pada `PEMBAHASAN_KHUSUS`). Progres real-time lewat streaming.
 
+**Terapkan ke A1.1 (terimplementasi 26 Sep 2026):** G2_FGD dievaluasi dari gabungan sesi SIMULATED dengan hasil terbaru per komponen (docs/05 §6); `PEMBAHASAN_KHUSUS` wajib catatan resolusi peneliti; Admin meluluskan G2; lalu versi turunan DRAF dibuat sebagai salinan penuh dan usulan yang diadopsi menjadi daftar tugas revisi yang ditautkan ke penyunting indikator.
+
 ### 4.6 Delphi / CVI
 
 **Panel:** 8 kursi. **Skala:** 4 titik (1 tidak relevan … 4 sangat relevan). Skor 3–4 dihitung relevan.
@@ -190,6 +196,10 @@ Aturan ini **membantu keputusan, bukan menghitung validitas** (§3.7.3). UI haru
 | Skala | S-CVI/Ave ≥ 0,90 |
 | Tidak selesai setelah ronde 3 | Keluarkan dari instrumen inti, laporkan terbuka |
 
+**Status implementasi (M6, 26 Sep 2026):** simulator Delphi 8 kursi pada versi DRAF turunan (G1 dan G2 — diwarisi dari induk — harus lulus), ronde R1–R3 per butir dengan checkpoint, matriks rating, umpan balik anonim, tinjauan peneliti (kejelasan kritis ditetapkan peneliti, konflik konstruk, catatan), finalisasi ronde, dan G3. Suntingan artefak dikunci selama ada ronde belum final. "Item baru" belum tersedia.
+
+**Delphi pakar manusia (REAL, 26 Sep 2026):** ronde REAL dibuat Admin pada versi DRAF turunan yang tidak berisi ronde simulasi (satu versi = satu origin); formulir Delphi dibangkitkan dari butir cakupan ronde, diisi 8 pakar melalui akun Pakar, ditutup, lalu dihitung menjadi `DelphiRating` REAL dengan aturan yang sama; ronde 2/3 menampilkan skor pribadi pakar dan statistik kelompok tanpa identitas.
+
 **Penanganan panel tidak lengkap (§3.8.3):** bila jumlah penilai valid ≠ 8, sistem **menghentikan ronde** dan menolak menerapkan aturan 7/8 secara otomatis. Penyebut aktual ditampilkan bersama setiap nilai I-CVI. Sel kosong tidak diimputasi sebagai skor rendah.
 
 ### 4.7 AHP
@@ -208,9 +218,13 @@ Aturan ini **membantu keputusan, bukan menghitung validitas** (§3.7.3). UI haru
 
 **Pelaporan wajib:** bobot individual, bobot agregat, CR individual, CR agregat, variasi antarpakar, hasil sensitivitas. UI tidak boleh menyembunyikan variasi.
 
+**Status implementasi (26 Sep 2026):** content lock (G4) membuat versi A2.0 `CONTENT_LOCKED` dari versi Delphi tanpa butir yang dikeluarkan dari inti; simulator AHP per matriks kursi (pasangan satu per satu, peninjauan ≤ 2 putaran, agregasi geometris AIJ, bobot individual dan agregat dengan rentang, skenario sensitivitas bawaan ±0,05/±0,10 per domain) dan G5. Sesi AHP baru ditolak setelah G5 lulus.
+
 ### 4.8 Scoring Engine
 
 **Evidence-to-level:** asesor (atau agen simulasi) mencatat locator bukti, menilai kecukupan terhadap deskriptor, memilih level tertinggi yang seluruh syarat wajibnya terpenuhi.
+
+**Status implementasi (26 Sep 2026):** asesor simulasi (`scoring.assessor.evidence`) menilai profil institusi **fiktif** yang ditulis peneliti — tanpa input level manual; plafon level dihitung `evidenceLevelCap` (docs/05 §5.5) dan level di atasnya ditolak; locator wajib kutipan verbatim dari profil. Skor dihitung dengan bobot agregat G5. Profil domain tampil lebih dulu, komposit sebagai ringkasan PROVISIONAL. Kalkulator "bagaimana jika" berjalan di peramban tanpa menyimpan. G6 memerlukan kasus data hilang nyata dan laporan `scripts/recompute.py --report` atas ekspor terkini.
 
 **Formula (§3.10.2):**
 
@@ -235,6 +249,8 @@ Menjalankan rantai tahap secara otomatis.
 **Perilaku:** eksekusi antrian dengan checkpoint per tahap; berhenti pada gate gagal; dapat dilanjutkan; log per langkah (prompt hash, model, token, biaya, latensi); estimasi biaya sebelum jalan; tombol batal.
 
 **Monitor:** timeline tahap, kartu status per kursi pakar, aliran transkrip langsung, meter biaya berjalan.
+
+**Status implementasi (26 Sep 2026):** perancang run, runner satu-unit-kerja-per-panggilan yang merangkai FGD → versi turunan → Delphi → content lock → AHP → penskoran dan berhenti di setiap gate/keputusan peneliti dengan tautan ke halamannya, monitor timeline + meter biaya, ledger `ModelCall` untuk semua panggilan, anggaran sesi/run/bulanan yang menolak panggilan sebelum dikirim, estimator biaya, ekspor CSV/XLSX/JSON berwatermark untuk setiap tabel, paket ZIP reproduksibilitas, dan cek langsung kriteria §6. PDF belum tersedia. Transkrip "langsung" berupa penyegaran berkala, bukan streaming SSE.
 
 ### 4.10 Audit & Export
 

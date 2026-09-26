@@ -11,6 +11,9 @@ describe("role permissions", () => {
     expect(can("TESTER", "artifact:write")).toBe(true);
     expect(can("TESTER", "instrument:manage")).toBe(false);
     expect(can("ADMIN", "instrument:manage")).toBe(true);
+    expect(can("TESTER", "panel:manage")).toBe(true);
+    expect(can("TESTER", "persona:approve")).toBe(false);
+    expect(can("PAKAR", "panel:manage")).toBe(false);
   });
 
   it("keeps PAKAR out of the simulation console", () => {

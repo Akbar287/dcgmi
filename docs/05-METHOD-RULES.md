@@ -265,6 +265,18 @@ Aspek dengan indikator `[4, level 1 (TIDAK_ADA_KAPABILITAS), 3]` → `A = 2.6667
 **S5 — bobot tidak berjumlah 1**
 `w = [0.5, 0.3, 0.3]` → lempar `MethodError('WEIGHTS_NOT_NORMALIZED')`.
 
+### 5.5 Bukti → level (keputusan peneliti, 26 September 2026)
+
+`evidenceLevelCap(requirements, satisfied)` = level tertinggi `L` sehingga **setiap** persyaratan bukti **wajib** dengan `minimumFor ≤ L` terpenuhi. Bukti wajib tanpa `minimumFor` berlaku sejak level 1. Bukti penguat tidak membatasi. Lantai skala = level 1. Ini hanya plafon: kecocokan deskriptor tetap penilaian asesor, dan level yang melebihi plafon ditolak sebagai keluaran tidak sah (bukan dipangkas otomatis).
+
+| # | Bukti wajib (minimumFor) | Terpenuhi | Plafon |
+|---|---|---|---|
+| E1 | a(2), b(3), c(4), d(5) | a, b | 3 |
+| E2 | sama | — | 1 |
+| E3 | sama | a, b, d | 3 (celah di 4) |
+| E4 | a(2) + penguat x(3) | a | 5 |
+| E5 | n(—), a(2) | a; lalu n, a | 1; lalu 5 |
+
 ---
 
 ## 6. Gate
@@ -280,6 +292,127 @@ Mengembalikan daftar `unmet` bila gagal. Contoh untuk `G1_BASELINE`:
 - `RUBRIC_LEVEL_GAP` — level 1–5 tidak lengkap atau tidak berurutan (memblokir)
 - `INDICATOR_WITHOUT_EVIDENCE` — tidak ada `EvidenceRequirement` wajib (memblokir)
 - `MISSING_OPERATIONAL_DEFINITION` (memblokir)
+
+### G2_FGD (keputusan peneliti, 26 September 2026)
+
+Masukan: daftar komponen agenda yang diharapkan (11 tahap × komponen versi, dibangun di luar `lib/method`), seluruh hasil komponen yang **selesai** dari semua sesi FGD versi tersebut, dan usulan notulis per hasil.
+
+1. Per komponen `(tahap, kode)` dipakai **hasil selesai terbaru**; hasil lebih lama tetap tersimpan dan dilaporkan sebagai peringatan `FGD_SUPERSEDED_RESULTS`.
+2. `FGD_COMPONENT_MISSING: <tahap>/<kode>` — komponen tanpa hasil selesai (memblokir).
+3. `FGD_POSITIONS_INCOMPLETE: <tahap>/<kode> n=<k>` — jumlah posisi ≠ `FGD_PANEL_SIZE` (memblokir).
+4. `FGD_SPECIAL_UNRESOLVED: <tahap>/<kode>` — keputusan `PEMBAHASAN_KHUSUS` tanpa catatan resolusi peneliti (memblokir).
+5. `FGD_SUGGESTION_UNDECIDED: <n>` — usulan dari hasil terpakai yang belum diputuskan diadopsi/tidak (memblokir).
+6. `FGD_NOT_ADOPTED_WITHOUT_REASON: <n>` — usulan tidak diadopsi tanpa alasan (memblokir; `validateSuggestionAdoption`).
+
+Aturan keputusan Tabel 3.5 tetap alat bantu, bukan uji validitas; G2 hanya memeriksa kelengkapan dan keterlacakan.
+
+| # | Situasi | Harapan |
+|---|---|---|
+| G2-1 | Semua komponen punya hasil 6 posisi, tanpa pembahasan khusus, semua usulan diputuskan | lulus |
+| G2-2 | Satu komponen tanpa hasil | `FGD_COMPONENT_MISSING` |
+| G2-3 | Hasil terbaru satu komponen hanya 5 posisi | `FGD_POSITIONS_INCOMPLETE … n=5` |
+| G2-4 | `PEMBAHASAN_KHUSUS` tanpa catatan; lalu dengan catatan | memblokir; lalu lulus |
+| G2-5 | Satu usulan belum diputuskan, satu tidak diadopsi tanpa alasan | `FGD_SUGGESTION_UNDECIDED: 1`, `FGD_NOT_ADOPTED_WITHOUT_REASON: 1` |
+| G2-6 | Hasil lama `PEMBAHASAN_KHUSUS` tanpa catatan, hasil baru `TERIMA` | lulus; peringatan `FGD_SUPERSEDED_RESULTS: 1`; usulan hasil lama tidak dihitung |
+
+**G2 versi turunan.** Versi turunan (A1.1 dst.) yang tidak punya sesi FGD sendiri mewarisi G2 induknya: evaluator lulus bila G2 induk `PASSED`, dengan peringatan `G2_INHERITED_FROM_PARENT: <label>`. Admin tetap harus meluluskannya (P7).
+
+### G3_DELPHI (keputusan peneliti, 26 September 2026)
+
+Delphi menilai versi DRAF turunan pasca-FGD. Masukan: semua indikator versi (tidak terhapus) dan hasil per butir dari ronde yang sudah **difinalisasi** peneliti.
+
+1. Per butir dipakai hasil **ronde terbaru** tempat butir itu dinilai.
+2. `NO_DELPHI_ROUND` — belum ada ronde final (memblokir).
+3. `DELPHI_ITEM_MISSING: <kode>` — butir tidak pernah dinilai (memblokir; S-CVI/Ave tidak dihitung).
+4. `PANEL_SIZE_DEVIATION: R<n>/<kode> n=<k>` — penilai valid ≠ `DELPHI_PANEL_SIZE` (memblokir, §3.8.3).
+5. `DELPHI_CLARITY_UNREVIEWED: <kode>` — ada penanda kejelasan yang belum ditinjau peneliti (memblokir). **Isu kejelasan kritis ditetapkan peneliti per butir; tidak ada ambang otomatis.**
+6. `UNRESOLVED_ITEMS: <kode,…>` — keputusan terakhir `REVISI_NILAI_ULANG` (memblokir; butir masuk ronde berikutnya).
+7. `REMOVAL_WITHOUT_REASON: <kode>` — `HAPUS_DARI_INTI` tanpa alasan konstruk peneliti (memblokir). Butir yang dihapus dilaporkan sebagai peringatan `ITEMS_REMOVED_FROM_CORE`.
+8. `TIDAK_SELESAI` setelah ronde 3 tidak memblokir; dilaporkan terbuka sebagai `ITEMS_REPORTED_AS_UNFINISHED`.
+9. `S_CVI_BELOW_THRESHOLD: <x> < 0.9` — S-CVI/Ave = rata-rata I-CVI terakhir **seluruh** butir, termasuk yang dihapus, sehingga penghapusan tidak dapat menaikkannya (§3.3).
+
+| # | Situasi | Harapan |
+|---|---|---|
+| G3-1 | I-CVI `[1, 0.875, 1]`, semua `PERTAHANKAN` | lulus; S-CVI/Ave 0,958 |
+| G3-2 | Satu butir tanpa rating | `DELPHI_ITEM_MISSING`; S-CVI/Ave tidak dihitung |
+| G3-3 | Butir terakhir `REVISI_NILAI_ULANG` | `UNRESOLVED_ITEMS` |
+| G3-4 | R1 `REVISI_NILAI_ULANG` 0,75 → R2 `PERTAHANKAN` 0,875 | lulus; hasil R2 dipakai |
+| G3-5 | `HAPUS_DARI_INTI` 0,125 tanpa alasan; lalu dengan alasan | `REMOVAL_WITHOUT_REASON`; lalu `S_CVI_BELOW_THRESHOLD: 0.667` |
+| G3-6 | Vektor §3.6 `[1, .875, .875, 1, .75]`, butir 0,75 `TIDAK_SELESAI` di R3 | lulus (0,900); `ITEMS_REPORTED_AS_UNFINISHED` |
+| G3-7 | 2 penanda kejelasan belum ditinjau; lalu ditinjau "tidak kritis" | `DELPHI_CLARITY_UNREVIEWED`; lalu lulus |
+| G3-8 | 7 penilai valid | `PANEL_SIZE_DEVIATION: R1/C01 n=7` |
+| G3-9 | Tidak ada ronde final | `NO_DELPHI_ROUND` |
+
+**Alur ronde.** Ronde 1 = seluruh butir; ronde berikutnya = butir yang keputusan terakhirnya `REVISI_NILAI_ULANG` (`itemsForNextRound`), maksimal `MAX_ROUNDS`. Bila setelah pengumpulan ada butir dengan penilai valid ≠ 8, ronde dihentikan (`FAILED`) dan aturan tidak diterapkan. Keputusan dihitung ulang dengan `computeItemCvi` setiap kali peneliti mengubah tinjauan kejelasan atau konflik konstruk. Suntingan artefak ditolak selama ada ronde yang belum final.
+
+### G4_CONTENT_LOCK (keputusan peneliti, 26 September 2026)
+
+Content lock membuat **versi baru** (mis. A2.0) berstatus `CONTENT_LOCKED` sebagai salinan versi Delphi. Butir yang keputusan Delphi terakhirnya `HAPUS_DARI_INTI` atau `TIDAK_SELESAI` **tidak ikut** dan dicatat `HAPUS` di change log versi terkunci. Versi Delphi dibekukan (`PROVISIONAL`) dan tetap tersimpan apa adanya. Evaluator `evaluateContentLockGate` dijalankan atas versi Delphi:
+
+1. `G3_NOT_PASSED` — G3 versi Delphi belum `PASSED` (memblokir).
+2. `DELPHI_ROUND_OPEN` — masih ada ronde belum final (memblokir).
+3. `ITEM_WITHOUT_DELPHI_RESULT: <kode>` — butir tanpa hasil Delphi final (memblokir).
+4. `ASPECT_WITHOUT_INDICATOR: <domain>/<aspek>` — aspek yang kosong setelah pengecualian (memblokir; struktur diperbaiki di versi DRAF dulu).
+5. Peringatan `EXCLUDED_FROM_CORE: <kode,…>` dan `STRUCTURE_AFTER_LOCK: d–a–i`.
+
+Tombol kunci adalah keputusan eksplisit Admin (P7): pada versi terkunci dicatat G4 `PASSED`, serta G1–G3 `PASSED` "diwarisi dari <versi Delphi>" dengan `AuditEvent CONTENT_LOCK`.
+
+| # | Situasi | Harapan |
+|---|---|---|
+| G4-1 | G3 lulus, semua butir `PERTAHANKAN` | dapat dikunci; semua butir ikut |
+| G4-2 | G3 belum lulus dan ada ronde terbuka | `G3_NOT_PASSED`, `DELPHI_ROUND_OPEN` |
+| G4-3 | Satu `HAPUS_DARI_INTI`, satu `TIDAK_SELESAI` | lulus; keduanya tidak ikut; `EXCLUDED_FROM_CORE` |
+| G4-4 | Satu-satunya butir aspek dihapus dari inti | `ASPECT_WITHOUT_INDICATOR` |
+| G4-5 | Butir tanpa hasil Delphi | `ITEM_WITHOUT_DELPHI_RESULT` |
+
+### G5_AHP (keputusan peneliti, 26 September 2026)
+
+Grup matriks (`expectedAhpGroups`): satu matriks `DOMAIN`, dan satu matriks `ASPECT/<domain>` untuk setiap domain beraspek ≥ 2; aspek tunggal berbobot lokal 1. Kursi mengisi pasangan satu per satu (`pairValue`: A → intensitas, B → 1/intensitas, EQUAL → 1). Matriks `CR ≥ CR_MAX` dikembalikan (`RETURNED`) dengan pasangan paling tidak konsisten; maksimal 2 putaran peninjauan (docs/04 §8), lalu `RETURNED_UNRESOLVED` dan dikeluarkan dari agregasi.
+
+1. `CONTENT_NOT_LOCKED` — versi bukan `CONTENT_LOCKED` (memblokir).
+2. `NO_MATRIX_SUBMITTED` — belum ada sesi AHP selesai (memblokir).
+3. `GROUP_MISSING: <grup>` (memblokir).
+4. `MATRIX_PENDING: <grup> #<kursi>` — matriks belum diisi atau masih ditinjau (memblokir).
+5. `ALL_MATRICES_INCONSISTENT: <grup>` — tidak ada matriks diterima pada grup itu (memblokir).
+6. `AGGREGATE_MISSING: <grup>` (memblokir).
+7. `SENSITIVITY_NOT_RUN` (memblokir).
+8. Peringatan `MATRIX_RETURNED_UNRESOLVED: <grup> #<kursi> CR=<x>` — dilaporkan, tidak disembunyikan.
+
+Skenario sensitivitas bawaan: setiap bobot domain agregat digeser ±0,05 dan ±0,10 (absolut), sisanya dinormalisasi ulang (`sensitivity`). Peneliti dapat mengubah daftar skenario sebelum sesi dibuat.
+
+| # | Situasi | Harapan |
+|---|---|---|
+| G5-1 | Semua grup: matriks diterima, teragregasi, sensitivitas jalan | lulus |
+| G5-2 | Hierarki belum terkunci | `CONTENT_NOT_LOCKED` |
+| G5-3 | Satu matriks `RETURNED_UNRESOLVED` CR 0,300, lainnya diterima | lulus; peringatan |
+| G5-4 | Semua matriks satu grup tak terselesaikan | `ALL_MATRICES_INCONSISTENT` |
+| G5-5 | Satu matriks masih `RETURNED` | `MATRIX_PENDING` |
+| G5-6 | Grup aspek tidak ada | `GROUP_MISSING` |
+| G5-7 | Sensitivitas belum dijalankan | `SENSITIVITY_NOT_RUN` |
+| G5-8 | Belum ada matriks | `NO_MATRIX_SUBMITTED` |
+
+### G6_SCORING (keputusan peneliti, 26 September 2026)
+
+Asesmen dijalankan oleh asesor simulasi atas **profil institusi fiktif** yang ditulis peneliti; tidak ada input level manual. Bobot = bobot agregat sesi AHP yang diluluskan G5; aspek tunggal berbobot 1.
+
+1. `CONTENT_NOT_LOCKED`, `G5_NOT_PASSED` (memblokir).
+2. `NO_ASSESSMENT` — belum ada asesmen selesai; `ASSESSMENT_PENDING: <n>` — ada asesmen belum selesai atau gagal (batalkan atau selesaikan).
+3. `WEIGHTS_STALE: <id>` — asesmen dihitung dengan bobot selain sesi G5.
+4. `MISSING_ADMIN_CASE_ABSENT`, `NO_CAPABILITY_CASE_ABSENT` — minimal satu asesmen memuat `MISSING_ADMINISTRATIF` dan satu memuat `TIDAK_ADA_KAPABILITAS`.
+5. `MISSING_NOT_PROPAGATED: <id>` — asesmen dengan missing administratif yang kompositnya tidak `null` atau tanpa laporan penyebab.
+6. `RECOMPUTE_NOT_RUN` / `RECOMPUTE_STALE` / `RECOMPUTE_DIFFERENCES: <n>` — laporan `scripts/recompute.py --report` atas ekspor **terkini** (SHA-256 berkas ekspor cocok) wajib tanpa perbedaan pada toleransi 1e-6.
+
+| # | Situasi | Harapan |
+|---|---|---|
+| G6-1 | Dua asesmen (missing administratif; tidak ada kapabilitas), rekalkulasi identik atas ekspor terkini | lulus |
+| G6-2 | G5 belum lulus | `G5_NOT_PASSED` |
+| G6-3 | Belum ada asesmen | `NO_ASSESSMENT` |
+| G6-4 | Satu asesmen gagal | `ASSESSMENT_PENDING: 1` |
+| G6-5 | Asesmen dengan bobot sesi lain | `WEIGHTS_STALE` |
+| G6-6 | Tanpa kasus data hilang | `MISSING_ADMIN_CASE_ABSENT`, `NO_CAPABILITY_CASE_ABSENT` |
+| G6-7 | Missing administratif tetapi komposit terhitung | `MISSING_NOT_PROPAGATED` |
+| G6-8 | Tanpa laporan; laporan ekspor lama; laporan berbeda | `RECOMPUTE_NOT_RUN`; `RECOMPUTE_STALE`; `RECOMPUTE_DIFFERENCES` |
+| G6-9 | Hierarki tidak terkunci | `CONTENT_NOT_LOCKED` |
 
 `G4_CONTENT_LOCK` hanya dapat di-`PASSED` oleh `ADMIN`, dan mencatat `AuditEvent` dengan alasan.
 

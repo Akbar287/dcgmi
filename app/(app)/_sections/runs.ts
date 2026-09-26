@@ -1,5 +1,7 @@
 import { listPipelineRuns, listRunSteps } from "@/lib/db/repository/runs";
 
+import { EstimatorView } from "./budget-views";
+import { RunDesignerView } from "./pipeline-views";
 import { col, type ModuleSections } from "./types";
 
 export const runsSections: ModuleSections<"runs"> = {
@@ -17,10 +19,11 @@ export const runsSections: ModuleSections<"runs"> = {
         col(t, "spent", "decimal", { digits: 2 }),
         col(t, "startedAt", "date"),
         col(t, "endedAt", "date"),
+        col(t, "action", "link", { hrefBase: "/runs/jalur/", linkText: t("pipeline.open") }),
       ],
     },
   },
-  perancang: { view: { kind: "pending", milestone: "M8" } },
+  perancang: { notices: [{ key: "banner.simulatedDetail" }], view: { kind: "custom", render: (ctx) => RunDesignerView(ctx) } },
   monitor: {
     view: {
       kind: "table",
@@ -40,5 +43,5 @@ export const runsSections: ModuleSections<"runs"> = {
       ],
     },
   },
-  estimator: { view: { kind: "pending", milestone: "M8" } },
+  estimator: { view: { kind: "custom", render: (ctx) => EstimatorView(ctx) } },
 };

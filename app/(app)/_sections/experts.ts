@@ -1,26 +1,14 @@
-import { listExpertCoi, listExperts, listPersonaBriefs } from "@/lib/db/repository/experts";
-import { listPanelistIdentities } from "@/lib/db/repository/identity";
+import { listExpertCoi, listExperts } from "@/lib/db/repository/experts";
+
+import { ExpertRegistryView, IdentityView, PersonaListView } from "./panel-views";
 
 import { col, type ModuleSections } from "./types";
 
 export const expertsSections: ModuleSections<"experts"> = {
   registry: {
+    permission: "panel:manage",
     notices: [{ key: "notices.personaEthics" }],
-    view: {
-      kind: "table",
-      scope: "global",
-      load: () => listExperts(),
-      columns: (t) => [
-        col(t, "panelCode", "code"),
-        col(t, "name", "text", { hidden: true }),
-        col(t, "field", "enum", { facet: true }),
-        col(t, "affiliation", "text", { hidden: true }),
-        col(t, "participation", "tags"),
-        col(t, "coi", "boolean"),
-        col(t, "hasCv", "boolean"),
-        col(t, "persona", "status"),
-      ],
-    },
+    view: { kind: "custom", render: () => ExpertRegistryView() },
   },
   cv: {
     notices: [{ key: "notices.personaEthics" }],
@@ -32,21 +20,8 @@ export const expertsSections: ModuleSections<"experts"> = {
     },
   },
   persona: {
-    notices: [{ key: "notices.personaEthics" }],
-    view: {
-      kind: "table",
-      scope: "global",
-      load: () => listPersonaBriefs(),
-      columns: (t) => [
-        col(t, "panelCode", "code"),
-        col(t, "field", "enum", { facet: true }),
-        col(t, "expertise", "tags"),
-        col(t, "years", "number"),
-        col(t, "status", "status", { facet: true }),
-        col(t, "promptVersion", "code"),
-        col(t, "approvedAt", "date"),
-      ],
-    },
+    notices: [{ key: "notices.personaEthics" }, { key: "panelAdmin.persona.manualNote" }],
+    view: { kind: "custom", render: (ctx) => PersonaListView(ctx) },
   },
   coi: {
     view: {
@@ -65,18 +40,7 @@ export const expertsSections: ModuleSections<"experts"> = {
   // other roles never query the table.
   identitas: {
     permission: "identity:read",
-    notices: [{ tone: "locked", key: "restricted.ownerBody" }],
-    view: {
-      kind: "table",
-      scope: "global",
-      load: () => listPanelistIdentities(),
-      columns: (t) => [
-        col(t, "panelCode", "code"),
-        col(t, "fullName"),
-        col(t, "email"),
-        col(t, "institution"),
-        col(t, "note", "long", { hidden: true }),
-      ],
-    },
+    notices: [{ tone: "locked", key: "restricted.ownerBody" }, { key: "panelAdmin.identity.usedForDeid" }],
+    view: { kind: "custom", render: () => IdentityView() },
   },
 };

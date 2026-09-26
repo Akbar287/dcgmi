@@ -1,6 +1,7 @@
 import { listAssessments, listIndicatorScores } from "@/lib/db/repository/scoring";
 import type { Translator } from "@/lib/i18n";
 
+import { AssessmentHeaderView, CalculatorView, ProfileSectionView } from "./scoring-views";
 import { col, type ModuleSections } from "./types";
 
 const scoreColumns = (t: Translator) => [
@@ -20,6 +21,7 @@ export const scoringSections: ModuleSections<"scoring"> = {
       kind: "table",
       scope: "version",
       load: listAssessments,
+      header: (ctx) => AssessmentHeaderView(ctx),
       columns: (t) => [
         col(t, "origin", "origin", { facet: true }),
         col(t, "institution"),
@@ -27,6 +29,7 @@ export const scoringSections: ModuleSections<"scoring"> = {
         col(t, "status", "status", { facet: true }),
         col(t, "scores", "number"),
         col(t, "createdAt", "date"),
+        col(t, "action", "link", { hrefBase: "/scoring/asesmen/", linkText: t("scoringSim.openAssessment") }),
       ],
     },
   },
@@ -41,6 +44,6 @@ export const scoringSections: ModuleSections<"scoring"> = {
     notices: [{ key: "notices.missingNoImputation" }],
     view: { kind: "table", scope: "version", load: (v) => listIndicatorScores(v, "missing"), columns: scoreColumns },
   },
-  profil: { notices: [{ key: "notices.scoringProvisional" }], view: { kind: "pending", milestone: "M7" } },
-  kalkulator: { view: { kind: "pending", milestone: "M7" } },
+  profil: { notices: [{ key: "notices.scoringProvisional" }], view: { kind: "custom", render: (ctx) => ProfileSectionView(ctx) } },
+  kalkulator: { notices: [{ key: "notices.scoringProvisional" }], view: { kind: "custom", render: (ctx) => CalculatorView(ctx) } },
 };

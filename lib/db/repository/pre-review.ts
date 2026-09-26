@@ -325,3 +325,12 @@ export async function listKnownExpertCodes(): Promise<string[]> {
   for (const f of forms) if (isPreReviewSettings(f.settings)) parseSnapshot(f.settings).data.experts.forEach((c) => codes.add(c));
   return [...codes].sort();
 }
+
+/** Snapshot of a pre-review form plus any content-verification issues (verifyForm_ port). */
+export async function getVerifiedSnapshot(formId: string): Promise<{ snapshot: PreReviewSnapshot | null; issues: string[] }> {
+  const prisma = await db();
+  const form = await loadForm(prisma, formId);
+  if (!form || !isPreReviewSettings(form.settings)) return { snapshot: null, issues: ["Form pra-reviu tidak ditemukan."] };
+  const issues = verifyContent(form);
+  return { snapshot: issues.length === 0 ? parseSnapshot(form.settings) : null, issues };
+}

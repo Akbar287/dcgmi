@@ -2,11 +2,36 @@ import { evaluateBaselineGate, GATE_ORDER, type GateEvaluation, type GateKey } f
 import { GateError } from "@/lib/method/errors";
 
 import { db } from "../client";
+import { evaluateAhpGateFor } from "./ahp-sessions";
 import { getArtifactSnapshot } from "./artifact";
+import { evaluateContentLockFor } from "./content-lock";
+import { evaluateScoringGateFor } from "./scoring-runs";
+import { evaluateDelphiGateFor } from "./delphi-gate";
+import { evaluateFgdGateFor } from "./fgd-gate";
 
 /** Gates whose conditions can be computed from stored data today. */
 const EVALUATORS: Partial<Record<GateKey, (versionId: string) => Promise<GateEvaluation>>> = {
   G1_BASELINE: async (versionId) => evaluateBaselineGate(await getArtifactSnapshot(versionId)),
+  G2_FGD: async (versionId) => {
+    const e = await evaluateFgdGateFor(versionId);
+    return { gate: e.gate, passed: e.passed, unmet: e.unmet, warnings: e.warnings };
+  },
+  G3_DELPHI: async (versionId) => {
+    const e = await evaluateDelphiGateFor(versionId);
+    return { gate: e.gate, passed: e.passed, unmet: e.unmet, warnings: e.warnings };
+  },
+  G4_CONTENT_LOCK: async (versionId) => {
+    const e = await evaluateContentLockFor(versionId);
+    return { gate: e.gate, passed: e.passed, unmet: e.unmet, warnings: e.warnings };
+  },
+  G5_AHP: async (versionId) => {
+    const e = await evaluateAhpGateFor(versionId);
+    return { gate: e.gate, passed: e.passed, unmet: e.unmet, warnings: e.warnings };
+  },
+  G6_SCORING: async (versionId) => {
+    const e = await evaluateScoringGateFor(versionId);
+    return { gate: e.gate, passed: e.passed, unmet: e.unmet, warnings: e.warnings };
+  },
 };
 
 export function canEvaluate(gate: GateKey): boolean {

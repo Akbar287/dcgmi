@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnInsertIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import { ColumnInsertIcon, Download04Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import type { ReactTable } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -34,10 +35,13 @@ export function DataTableToolbar({
   table,
   columns,
   rows,
+  exportHref,
 }: {
   table: Table;
   columns: DataTableColumn[];
   rows: DataTableRow[];
+  /** Base URL of the watermarked export (docs/07 P4); `&format=` is appended. */
+  exportHref?: string;
 }) {
   const t = useT();
   const facets = useMemo(
@@ -92,6 +96,21 @@ export function DataTableToolbar({
         <span className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
           {filtered} / {rows.length} {t("common.rows")}
         </span>
+        {exportHref ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+              <HugeiconsIcon icon={Download04Icon} strokeWidth={2} aria-hidden="true" data-icon="inline-start" />
+              {t("exports.menu")}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(["csv", "xlsx", "json"] as const).map((f) => (
+                <DropdownMenuItem key={f} render={<a href={`${exportHref}&format=${f}`} download />}>
+                  {f.toUpperCase()}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
             <HugeiconsIcon icon={ColumnInsertIcon} strokeWidth={2} aria-hidden="true" data-icon="inline-start" />

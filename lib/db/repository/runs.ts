@@ -4,8 +4,9 @@ import { decimal, iso, type FlatRecord } from "../types";
 export async function listPipelineRuns(versionId: string): Promise<FlatRecord[]> {
   const prisma = await db();
   const rows = await prisma.pipelineRun.findMany({
-    where: { versionId },
-    orderBy: { startedAt: "desc" },
+    // A run moves across derived versions; list it on every version it touched.
+    where: { OR: [{ versionId }, { steps: { some: { versionId } } }] },
+    orderBy: { createdAt: "desc" },
     include: { _count: { select: { steps: true } } },
   });
   return rows.map((r) => ({
@@ -18,14 +19,15 @@ export async function listPipelineRuns(versionId: string): Promise<FlatRecord[]>
     spent: decimal(r.spentUsd),
     startedAt: iso(r.startedAt),
     endedAt: iso(r.endedAt),
+    action: r.id,
   }));
 }
 
 export async function listRunSteps(versionId: string): Promise<FlatRecord[]> {
   const prisma = await db();
   const rows = await prisma.runStep.findMany({
-    where: { run: { versionId } },
-    orderBy: [{ run: { startedAt: "desc" } }, { order: "asc" }],
+    where: { run: { OR: [{ versionId }, { steps: { some: { versionId } } }] } },
+    orderBy: [{ run: { createdAt: "desc" } }, { order: "asc" }],
     include: { run: { select: { name: true } } },
   });
   return rows.map((s) => ({

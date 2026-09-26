@@ -166,3 +166,24 @@ export function sensitivity(
 
   return { weights, rankBefore, rankAfter, rankChanged: rankBefore.join('>') !== rankAfter.join('>') };
 }
+
+/**
+ * Matrix groups a hierarchy needs (§3.9.1): one domain matrix, and one aspect
+ * matrix per domain with at least two aspects. A single aspect has local
+ * weight 1 and needs no judgement (docs/05 §5.1).
+ */
+export function expectedAhpGroups(domains: { code: string; aspects: string[] }[]): string[] {
+  const groups: string[] = [];
+  if (domains.length >= 2) groups.push('DOMAIN');
+  for (const d of domains) if (d.aspects.length >= 2) groups.push(`ASPECT/${d.code}`);
+  return groups;
+}
+
+/** Saaty value a[A][B] from one pair judgement (docs/04 §8); EQUAL is 1 regardless of intensity. */
+export function pairValue(preferred: 'A' | 'B' | 'EQUAL', intensity: number): number {
+  if (preferred === 'EQUAL') return 1;
+  if (!Number.isInteger(intensity) || intensity < 1 || intensity > METHOD.SAATY_MAX) {
+    throw new MethodError('MATRIX_NON_POSITIVE', `Intensitas Saaty di luar rentang: ${intensity}`);
+  }
+  return preferred === 'A' ? intensity : 1 / intensity;
+}

@@ -1,5 +1,7 @@
 import { listFormResponses, listForms } from "@/lib/db/repository/instruments";
 
+import { BuilderView, PreviewListView } from "./builder-views";
+import { GoogleFormImportView } from "./gform-import";
 import { PreReviewForms } from "./pre-review-forms";
 import { col, type ModuleSections } from "./types";
 
@@ -23,8 +25,8 @@ export const formsSections: ModuleSections<"forms"> = {
       ],
     },
   },
-  builder: { view: { kind: "pending", milestone: "M3" } },
-  pratinjau: { view: { kind: "pending", milestone: "M3" } },
+  builder: { view: { kind: "custom", render: (ctx) => BuilderView(ctx) } },
+  pratinjau: { view: { kind: "custom", render: (ctx) => PreviewListView(ctx) } },
   respons: {
     view: {
       kind: "table",
@@ -34,10 +36,16 @@ export const formsSections: ModuleSections<"forms"> = {
         col(t, "origin", "origin", { facet: true }),
         col(t, "slug", "code", { facet: true }),
         col(t, "respondent", "code"),
+        col(t, "channel", "enum", { facet: true }),
         col(t, "completed", "boolean"),
         col(t, "submittedAt", "date"),
       ],
     },
   },
-  gform: { view: { kind: "pending", milestone: "M3" } },
+  // Human expert answers from Google Forms enter as REAL (docs/07 P3); Admin only.
+  gform: {
+    permission: "instrument:manage",
+    notices: [{ key: "preReview.realNotice" }],
+    view: { kind: "custom", render: (ctx) => GoogleFormImportView(ctx) },
+  },
 };

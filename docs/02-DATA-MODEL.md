@@ -345,6 +345,16 @@ model DelphiRound {
   ratings     DelphiRating[]
   results     DelphiItemResult[]
   scaleSCviAve Float?
+  seed        Int        @default(0)
+  settings    Json?      // versi prompt, estimasi panggilan, konteks FGD R1 (snapshot yang dilihat kursi FULL)
+  scopeCodes  String[]   // butir ronde ini: R1 semua, R2/R3 = itemsForNextRound
+  error       String?    // mis. DEVIASI PANEL — ronde dihentikan
+  createdById String?
+  createdAt   DateTime   @default(now())
+  startedAt   DateTime?
+  endedAt     DateTime?
+  finalizedAt   DateTime? // hanya ronde final dihitung G3; suntingan artefak ditolak sebelum final
+  finalizedById String?
   @@unique([versionId, roundNumber])
 }
 
@@ -359,6 +369,10 @@ model DelphiRating {
   clarityFlag  Boolean   @default(false)
   clarityNote  String?
   dataOrigin   DataOrigin @default(SIMULATED)
+  reason       String?   // alasan singkat kursi
+  error        String?   // panggilan gagal; relevance tetap null
+  promptId String?  promptVersion String?  modelId String?  promptHash String?
+  tokensIn Int?  tokensOut Int?  latencyMs Int?  createdAt DateTime @default(now())
   @@unique([roundId, indicatorId, seatIndex])
 }
 
@@ -373,6 +387,11 @@ model DelphiItemResult {
   validRaters Int       // penyebut aktual
   decision    DelphiDecision
   reason      String?
+  clarityFlags      Int      @default(0)  // kursi yang menandai kejelasan
+  clarityCritical   Boolean? // keputusan peneliti; null = belum ditinjau
+  constructConflict Boolean  @default(false)
+  researcherNote    String?  // wajib untuk HAPUS_DARI_INTI
+  reviewedById String?  reviewedAt DateTime?
   @@unique([roundId, indicatorId])
 }
 
@@ -391,6 +410,13 @@ model AhpSession {
   matrices     AhpMatrix[]
   weights      AhpWeight[]
   sensitivity  SensitivityScenario[]
+  seed         Int       @default(0)
+  settings     Json?     // cakupan per kursi, skenario sensitivitas, versi prompt, estimasi panggilan
+  error        String?   // mis. ALL_MATRICES_INCONSISTENT: <grup>
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  startedAt    DateTime?
+  endedAt      DateTime?
 }
 
 model AhpMatrix {
@@ -401,13 +427,19 @@ model AhpMatrix {
   level      String     // "DOMAIN" | "ASPECT"
   parentCode String?    // kode domain bila level = ASPECT
   size       Int
-  cells      Json       // number[][] upper triangle + resiprokal
+  elements   String[]   // kode elemen urut baris/kolom
+  cells      Json?      // number[][] resiprokal; null sampai semua pasangan dinilai
   lambdaMax  Float?
   ci         Float?
   cr         Float?
   accepted   Boolean @default(false)   // false bila CR >= 0.10 → dikembalikan ke kursi
-  revisionOf String?
-  @@unique([sessionId, seatIndex, level, parentCode])
+  revisionOf String?    // percobaan sebelumnya
+  attempt    Int @default(0)          // 0 = pengisian; 1–2 = putaran peninjauan (docs/04 §8)
+  status     String @default("PENDING") // PENDING | ACCEPTED | RETURNED | RETURNED_UNRESOLVED
+  pairs      Json?      // penilaian pasangan + alasan + log panggilan
+  returnedPairs Json?   // mostInconsistentPairs yang dikembalikan
+  error String?  tokensIn Int?  tokensOut Int?  createdAt DateTime @default(now())
+  @@unique([sessionId, seatIndex, level, parentCode, attempt])
 }
 
 model AhpWeight {
@@ -433,6 +465,15 @@ model SensitivityScenario {
 }
 
 // ─────────────────────── SCORING ────────────────────────────
+
+model InstitutionProfile {           // profil FIKTIF untuk uji penskoran (docs/07); label berawalan [FIKTIF]
+  id String @id  label String @unique  description String  createdById String?  createdAt DateTime
+}
+
+model RecomputeCheck {               // laporan scripts/recompute.py --report (docs/05 §7)
+  id String @id  versionId String  exportSha256 String  ok Boolean  diffCount Int  report Json
+  uploadedById String?  createdAt DateTime
+}
 
 model Assessment {
   id           String @id @default(cuid())
@@ -475,6 +516,9 @@ model Form {
   createdAt   DateTime @default(now())
 }
 
+// Form.settings untuk formulir builder: { kind: "GENERIC" | "DELPHI", versionId, respondents: string[], delphi?: { roundId, roundNumber } }.
+// FormSection.nextRule = { next: "NEXT" | "SUBMIT" | <order> }; FormField.branching = { <pilihan>: <order> | "SUBMIT" }.
+// FormResponse.respondentRef = kode panel (REAL) atau "UJI:<userId>" (DRY_RUN, SIMULATED). DelphiRound.settings (REAL) = { seatCodes[8], formId }.
 model FormSection {
   id        String @id @default(cuid())
   formId    String
@@ -520,17 +564,31 @@ model FormResponse {
 model PipelineRun {
   id          String @id @default(cuid())
   name        String
-  versionId   String
+  versionId   String     // versi awal (sumber FGD); langkah berikutnya berpindah ke versi turunan/terkunci
   configId    String
   mode        RunMode   @default(STEP)
   status      RunStatus @default(QUEUED)
-  stagesPlan  Json
+  stagesPlan  Json       // RunPlan: panel FGD/Delphi/AHP, agenda, skenario, asesor, profil fiktif, seed
   budgetUsd   Decimal?  @db.Decimal(10,4)
-  spentUsd    Decimal   @default(0) @db.Decimal(10,4)
+  spentUsd    Decimal   @default(0) @db.Decimal(10,4)   // dari ledger ModelCall
   startedAt   DateTime?
   endedAt     DateTime?
-  steps       RunStep[]
+  steps       RunStep[]  // FGD, DERIVE, DELPHI, LOCK, AHP, SCORING (+ refType/refId, versionId, waitReason, detail)
+  waitReason  String?    // WAITING_GATE:<gate> | WAITING_RESEARCHER:<tugas> | STEP_DONE
+  error String?  createdById String?  createdAt DateTime
 }
+
+model ModelCall {                     // ledger biaya + log model terpadu (FGD, DELPHI, AHP, SCORING, PING)
+  id String @id  createdAt DateTime  kind String  refType String  refId String  runId String?  versionId String?
+  dataOrigin DataOrigin  modelId String  promptId String  promptVersion String  promptHash String
+  tokensIn Int?  tokensOut Int?  latencyMs Int?  costUsd Decimal?   // null = harga tidak diketahui
+  ok Boolean  error String?
+}
+
+model AppSetting { key String @id  value Json  updatedById String?  updatedAt DateTime }   // mis. budget.monthlyUsd
+
+// FgdSession, DelphiRound, AhpSession, Assessment: + budgetUsd Decimal?, runId String?
+// ModelProfile: + priceSource String?   // CATALOG | MANUAL
 
 model RunStep {
   id        String @id @default(cuid())

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { CodeText } from "@/components/atoms/code-text";
 import { ControlledExceptionBadge } from "@/components/atoms/controlled-exception-badge";
 import { EmptyValue } from "@/components/atoms/empty-value";
@@ -31,6 +33,12 @@ export function DataTableCell({
   switch (column.kind) {
     case "code":
       return <CodeText>{String(value)}</CodeText>;
+    case "link":
+      return (
+        <Link href={`${column.hrefBase ?? ""}${row.id}`} className={column.linkText ? "text-sm underline underline-offset-4" : "font-mono text-xs underline underline-offset-4"}>
+          {column.linkText ?? String(value)}
+        </Link>
+      );
     case "long":
       return <span className="line-clamp-2 max-w-md text-muted-foreground">{String(value)}</span>;
     case "number":

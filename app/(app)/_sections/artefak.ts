@@ -8,6 +8,7 @@ import {
   listVersions,
 } from "@/lib/db/repository/artifact";
 
+import { AddIndicatorView, CompareView, GroupEditView } from "./artefak-views";
 import { col, type ModuleSections } from "./types";
 
 export const artefakSections: ModuleSections<"artefak"> = {
@@ -32,6 +33,7 @@ export const artefakSections: ModuleSections<"artefak"> = {
       kind: "table",
       scope: "version",
       load: listDomains,
+      header: (ctx) => GroupEditView(ctx, "Domain"),
       columns: (t) => [
         col(t, "order", "number"),
         col(t, "code", "code"),
@@ -47,6 +49,7 @@ export const artefakSections: ModuleSections<"artefak"> = {
       kind: "table",
       scope: "version",
       load: listAspects,
+      header: (ctx) => GroupEditView(ctx, "Aspect"),
       columns: (t) => [
         col(t, "domain", "code", { facet: true }),
         col(t, "code", "code"),
@@ -61,16 +64,18 @@ export const artefakSections: ModuleSections<"artefak"> = {
     view: {
       kind: "table",
       scope: "version",
-      load: listIndicators,
+      load: (versionId) => listIndicators(versionId, { includeDeleted: true }),
+      header: (ctx) => AddIndicatorView(ctx),
       columns: (t) => [
         col(t, "domain", "code", { facet: true }),
         col(t, "aspect", "code", { facet: true }),
-        col(t, "code", "code"),
+        col(t, "code", "link", { hrefBase: "/artefak/sunting/" }),
         col(t, "exception", "exception"),
         col(t, "name"),
         col(t, "operationalDefinition", "long", { hidden: true }),
         col(t, "rubricCount", "number"),
         col(t, "evidenceCount", "number"),
+        col(t, "deleted", "boolean", { facet: true }),
       ],
     },
   },
@@ -126,5 +131,5 @@ export const artefakSections: ModuleSections<"artefak"> = {
       ],
     },
   },
-  bandingkan: { view: { kind: "pending", milestone: "M2" } },
+  bandingkan: { view: { kind: "custom", render: (ctx) => CompareView(ctx) } },
 };

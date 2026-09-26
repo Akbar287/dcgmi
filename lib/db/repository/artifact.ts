@@ -1,3 +1,4 @@
+import type { DiffIndicator } from "@/lib/artifact/diff";
 import type { ArtifactSnapshot } from "@/lib/method/gates";
 
 import { db } from "../client";
@@ -36,7 +37,7 @@ export async function listDomains(versionId: string): Promise<FlatRecord[]> {
   const rows = await prisma.domain.findMany({
     where: { versionId },
     orderBy: { order: "asc" },
-    include: { aspects: { select: { _count: { select: { indicators: true } } } } },
+    include: { aspects: { select: { _count: { select: { indicators: { where: { deletedAt: null } } } } } } },
   });
   return rows.map((d) => ({
     id: d.id,
@@ -55,7 +56,7 @@ export async function listAspects(versionId: string): Promise<FlatRecord[]> {
   const rows = await prisma.aspect.findMany({
     where: { domain: { versionId } },
     orderBy: [{ domain: { order: "asc" } }, { order: "asc" }],
-    include: { domain: { select: { code: true } }, _count: { select: { indicators: true } } },
+    include: { domain: { select: { code: true } }, _count: { select: { indicators: { where: { deletedAt: null } } } } },
   });
   return rows.map((a) => ({
     id: a.id,
@@ -67,10 +68,10 @@ export async function listAspects(versionId: string): Promise<FlatRecord[]> {
   }));
 }
 
-export async function listIndicators(versionId: string): Promise<FlatRecord[]> {
+export async function listIndicators(versionId: string, opts: { includeDeleted?: boolean } = {}): Promise<FlatRecord[]> {
   const prisma = await db();
   const rows = await prisma.indicator.findMany({
-    where: { aspect: { domain: { versionId } } },
+    where: { aspect: { domain: { versionId } }, ...(opts.includeDeleted ? {} : { deletedAt: null }) },
     orderBy: [{ aspect: { domain: { order: "asc" } } }, { aspect: { order: "asc" } }, { order: "asc" }],
     include: {
       aspect: { select: { code: true, domain: { select: { code: true } } } },
@@ -88,13 +89,14 @@ export async function listIndicators(versionId: string): Promise<FlatRecord[]> {
     operationalDefinition: i.operationalDefinition,
     rubricCount: new Set(i.rubricLevels.map((r) => r.level)).size,
     evidenceCount: i.evidence.filter((e) => e.mandatory).length,
+    deleted: i.deletedAt !== null,
   }));
 }
 
 export async function listRubricLevels(versionId: string): Promise<FlatRecord[]> {
   const prisma = await db();
   const rows = await prisma.rubricLevel.findMany({
-    where: { indicator: { aspect: { domain: { versionId } } } },
+    where: { indicator: { aspect: { domain: { versionId } }, deletedAt: null } },
     orderBy: [{ indicator: { code: "asc" } }, { level: "asc" }],
     include: { indicator: { select: { code: true } } },
   });
@@ -111,7 +113,7 @@ export async function listRubricLevels(versionId: string): Promise<FlatRecord[]>
 export async function listEvidence(versionId: string): Promise<FlatRecord[]> {
   const prisma = await db();
   const rows = await prisma.evidenceRequirement.findMany({
-    where: { indicator: { aspect: { domain: { versionId } } } },
+    where: { indicator: { aspect: { domain: { versionId } }, deletedAt: null } },
     orderBy: [{ indicator: { code: "asc" } }, { minimumFor: "asc" }],
     include: { indicator: { select: { code: true } } },
   });
@@ -161,6 +163,7 @@ export async function getArtifactSnapshot(versionId: string): Promise<ArtifactSn
           orderBy: { order: "asc" },
           include: {
             indicators: {
+              where: { deletedAt: null },
               orderBy: { order: "asc" },
               include: { rubricLevels: { select: { level: true } }, evidence: { select: { mandatory: true } } },
             },
@@ -218,6 +221,7 @@ export async function getArtifactHierarchy(versionId: string): Promise<Hierarchy
           code: true,
           name: true,
           indicators: {
+            where: { deletedAt: null },
             orderBy: { order: "asc" },
             select: { code: true, name: true, isControlledException: true, operationalDefinition: true },
           },
@@ -226,4 +230,25 @@ export async function getArtifactHierarchy(versionId: string): Promise<Hierarchy
     },
   });
   return domains;
+}
+
+/** Every indicator of a version (soft-deleted included) in the shape `diffVersions` compares. */
+export async function getDiffIndicators(versionId: string): Promise<DiffIndicator[]> {
+  const prisma = await db();
+  const rows = await prisma.indicator.findMany({
+    where: { aspect: { domain: { versionId } } },
+    include: { aspect: { select: { code: true, domain: { select: { code: true } } } }, rubricLevels: true, evidence: true },
+  });
+  return rows.map((i) => ({
+    code: i.code,
+    name: i.name,
+    domainCode: i.aspect.domain.code,
+    aspectCode: i.aspect.code,
+    deleted: i.deletedAt !== null,
+    operationalDefinition: i.operationalDefinition,
+    assessmentObject: i.assessmentObject,
+    boundaryNote: i.boundaryNote,
+    rubric: i.rubricLevels.map((r) => ({ level: r.level, label: r.label, descriptor: r.descriptor })),
+    evidence: i.evidence.map((e) => ({ kind: e.kind, minimumFor: e.minimumFor, mandatory: e.mandatory, description: e.description })),
+  }));
 }

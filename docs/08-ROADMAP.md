@@ -14,6 +14,8 @@ Milestone disusun agar setiap tahap menghasilkan sesuatu yang dapat diuji, dan a
 | **M7** | AHP + Scoring | Pairwise, CR, pengembalian matriks, agregasi geometris, sensitivitas, mesin skor, profil domain | Rekalkulasi Python identik sampai 6 desimal |
 | **M8** | Pipeline & Audit | Runner otomatis, monitor biaya, ekspor berwatermark, paket reproduksibilitas | Seluruh kriteria penerimaan di SPECIFICATION.md §6 terpenuhi |
 
+**Status 26 Sep 2026:** M1, M2, M4–M8 terimplementasi dan diuji ujung ke ujung dengan `MOCK_AI=1` (seluruh kriteria §6 terpenuhi pada data uji ZZ). M3 terimplementasi: builder umum, pratinjau, uji coba, runner Pakar, dan formulir Delphi 43 butir yang diisi pakar manusia ujung ke ujung sebagai ronde REAL (diuji dengan akun uji, lalu data REAL uji dihapus). Belum: unggah berkas dan ekspor Apps Script dari builder. Ditunda: ekspor PDF, GABUNG/PECAH, item baru Delphi, Delphi pakar manusia, G7 pilot, streaming SSE.
+
 ---
 
 ## Yang sengaja ditunda

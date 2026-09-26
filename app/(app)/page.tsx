@@ -5,17 +5,24 @@ import { GatePassForm } from "@/components/molecules/gate-pass-form";
 import { ArtifactMap } from "@/components/organisms/artifact-map/artifact-map";
 import { BaselineHealth } from "@/components/organisms/baseline-health";
 import { GateEvaluationCard } from "@/components/organisms/gate-evaluation-card";
-import { GateTimeline } from "@/components/organisms/gate-timeline";
+import { ProcessFlow } from "@/components/organisms/process-flow/process-flow";
 import { SectionTemplate } from "@/components/templates/section-template";
 import { can } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { getArtifactHierarchy, getArtifactSnapshot, listGateRecords } from "@/lib/db/repository/artifact";
+import { evaluateAhpGateFor } from "@/lib/db/repository/ahp-sessions";
+import { evaluateContentLockFor } from "@/lib/db/repository/content-lock";
+import { evaluateDelphiGateFor } from "@/lib/db/repository/delphi-gate";
+import { evaluateScoringGateFor } from "@/lib/db/repository/scoring-runs";
+import { evaluateFgdGateFor } from "@/lib/db/repository/fgd-gate";
+import { getFgdPrerequisites } from "@/lib/db/repository/process";
 import { tryQuery } from "@/lib/db/result";
 import { getTranslator } from "@/lib/i18n/server";
 import { evaluateBaselineGate, GATE_ORDER, type GateKey } from "@/lib/method/gates";
 
 import { getActiveVersionId } from "./_lib/active-version";
 import { incompleteIndicators } from "./_lib/gate-view";
+import { buildProcessView } from "./_lib/process-view";
 import { passGateAction } from "./gate-actions";
 
 export default async function DashboardPage() {
@@ -25,12 +32,18 @@ export default async function DashboardPage() {
   const data = await tryQuery(async () => {
     const versionId = await getActiveVersionId();
     if (!versionId) return null;
-    const [snapshot, gates, hierarchy] = await Promise.all([
+    const [snapshot, gates, hierarchy, fgd, g2, g3, g4, g5, g6] = await Promise.all([
       getArtifactSnapshot(versionId),
       listGateRecords(versionId),
       getArtifactHierarchy(versionId),
+      getFgdPrerequisites(),
+      evaluateFgdGateFor(versionId),
+      evaluateDelphiGateFor(versionId),
+      evaluateContentLockFor(versionId),
+      evaluateAhpGateFor(versionId),
+      evaluateScoringGateFor(versionId),
     ]);
-    return { snapshot, gates, hierarchy };
+    return { snapshot, gates, hierarchy, fgd, g2, g3, g4, g5, g6 };
   });
 
   let content: React.ReactNode;
@@ -41,12 +54,18 @@ export default async function DashboardPage() {
       <EmptyState icon={Layers01Icon} title={t("dashboard.noVersionTitle")} description={t("dashboard.noVersionBody")} />
     );
   } else {
-    const { snapshot, gates, hierarchy } = data.data;
+    const { snapshot, gates, hierarchy, fgd, g2, g3, g4, g5, g6 } = data.data;
     const gateStates = gates
       .filter((g): g is typeof g & { gate: GateKey } => (GATE_ORDER as string[]).includes(g.gate))
       .map((g) => ({ gate: g.gate, status: g.status }));
     const evaluation = evaluateBaselineGate(snapshot);
     const incomplete = incompleteIndicators(evaluation);
+    const processStages = buildProcessView({
+      t,
+      gateStatus: Object.fromEntries(gateStates.map((g) => [g.gate, g.status])),
+      evaluations: { G1_BASELINE: evaluation, G2_FGD: g2, G3_DELPHI: g3, G4_CONTENT_LOCK: g4, G5_AHP: g5, G6_SCORING: g6 },
+      fgd,
+    });
     const mapDomains = hierarchy.map((d) => ({
       ...d,
       aspects: d.aspects.map((a) => ({
@@ -59,7 +78,7 @@ export default async function DashboardPage() {
     const canPass = can(user.role, "gate:pass") && evaluation.passed && g1Status !== "PASSED";
     content = (
       <>
-        <GateTimeline gates={gateStates} />
+        <ProcessFlow stages={processStages} />
         <GateEvaluationCard
           evaluation={evaluation}
           title={t("dashboard.baselineGate")}
