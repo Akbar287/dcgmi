@@ -1,0 +1,676 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DataOrigin {
+  SIMULATED
+  REAL
+}
+
+enum Stage {
+  BASELINE
+  FGD
+  DELPHI_CVI
+  CONTENT_LOCK
+  AHP
+  SCORING
+  PILOT
+}
+
+enum GateStatus {
+  PENDING
+  PASSED
+  FAILED
+  REOPENED
+}
+
+enum ArtifactStatus {
+  DRAFT
+  PROVISIONAL
+  CONTENT_LOCKED
+  ARCHIVED
+}
+
+enum PersonaBriefStatus {
+  DRAFT
+  REVIEWED
+  APPROVED
+  RETIRED
+}
+
+enum ExpertField {
+  IT_GOVERNANCE
+  MANAJEMEN_PT
+  SPBE
+  SUSTAINABILITY
+}
+
+enum EvidenceKind {
+  NORMATIF
+  IMPLEMENTASI
+  OPERASIONAL
+  HASIL
+  PERBAIKAN
+}
+
+enum FgdPositionType {
+  TERIMA
+  TERIMA_DENGAN_REVISI
+  TOLAK
+}
+
+enum ActionType {
+  TAMBAH
+  HAPUS
+  GABUNG
+  PECAH
+  PINDAH
+  RUMUS_ULANG
+}
+
+enum FgdDecisionType {
+  REVISI
+  PEMBAHASAN_KHUSUS
+  TIDAK_SEPAKAT
+  PERTAHANKAN_SEMENTARA
+  TERIMA
+}
+
+enum DelphiDecision {
+  PERTAHANKAN
+  REVISI_NILAI_ULANG
+  HAPUS_DARI_INTI
+  BARU
+  TIDAK_SELESAI
+}
+
+enum MissingKind {
+  NONE
+  TIDAK_ADA_KAPABILITAS
+  MISSING_ADMINISTRATIF
+}
+
+enum FormStatus {
+  DRAFT
+  DRY_RUN
+  HOLD
+  ACTIVE
+  CLOSED
+}
+
+enum RunMode {
+  STEP
+  AUTO
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// Admin = peneliti utama (dulu Owner), Tester = anggota tim (dulu Editor),
+/// Pakar = pakar manusia; tidak mengakses konsol simulasi.
+enum Role {
+  ADMIN
+  TESTER
+  PAKAR
+}
+
+model ArtifactVersion {
+  id              String            @id @default(cuid())
+  label           String            @unique
+  status          ArtifactStatus    @default(DRAFT)
+  parentId        String?
+  parent          ArtifactVersion?  @relation("VersionLineage", fields: [parentId], references: [id])
+  children        ArtifactVersion[] @relation("VersionLineage")
+  note            String?
+  contentLockedAt DateTime?
+  createdAt       DateTime          @default(now())
+  domains         Domain[]
+  changeLog       ChangeLogEntry[]
+  gates           GateRecord[]
+  fgdSessions     FgdSession[]
+  delphiRounds    DelphiRound[]
+  ahpSessions     AhpSession[]
+}
+
+model Domain {
+  id         String          @id @default(cuid())
+  versionId  String
+  version    ArtifactVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  code       String
+  order      Int
+  name       String
+  rationale  String?
+  sdgTags    String[]
+  slrStrings String[]
+  aspects    Aspect[]
+  @@unique([versionId, code])
+}
+
+model Aspect {
+  id         String      @id @default(cuid())
+  domainId   String
+  domain     Domain      @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  code       String
+  order      Int
+  name       String
+  rationale  String?
+  indicators Indicator[]
+  @@unique([domainId, code])
+}
+
+model Indicator {
+  id                    String                @id @default(cuid())
+  aspectId              String
+  aspect                Aspect                @relation(fields: [aspectId], references: [id], onDelete: Cascade)
+  code                  String
+  order                 Int
+  name                  String
+  operationalDefinition String?
+  assessmentObject      String?
+  boundaryNote          String?
+  sources               String[]
+  isControlledException Boolean               @default(false)
+  exceptionNote         String?
+  rubricLevels          RubricLevel[]
+  evidence              EvidenceRequirement[]
+  delphiRatings         DelphiRating[]
+  scores                IndicatorScore[]
+  @@unique([aspectId, code])
+}
+
+model RubricLevel {
+  id          String    @id @default(cuid())
+  indicatorId String
+  indicator   Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  level       Int
+  label       String
+  descriptor  String
+  cumulative  Boolean   @default(true)
+  @@unique([indicatorId, level])
+}
+
+model EvidenceRequirement {
+  id          String       @id @default(cuid())
+  indicatorId String
+  indicator   Indicator    @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  kind        EvidenceKind
+  minimumFor  Int?
+  mandatory   Boolean      @default(false)
+  description String
+}
+
+model ChangeLogEntry {
+  id             String          @id @default(cuid())
+  versionId      String
+  version        ArtifactVersion @relation(fields: [versionId], references: [id])
+  targetType     String
+  targetCode     String
+  action         ActionType
+  reason         String
+  decisionSource String
+  impactNote     String?
+  actorId        String?
+  createdAt      DateTime        @default(now())
+  @@index([versionId, targetCode])
+}
+
+model GateRecord {
+  id          String          @id @default(cuid())
+  versionId   String
+  version     ArtifactVersion @relation(fields: [versionId], references: [id])
+  gate        String
+  status      GateStatus      @default(PENDING)
+  unmet       String[]
+  warnings    String[]
+  decidedById String?
+  decidedAt   DateTime?
+  note        String?
+  @@unique([versionId, gate])
+}
+
+model Expert {
+  id          String       @id @default(cuid())
+  panelCode   String       @unique
+  displayName String?
+  field       ExpertField
+  affiliation String?
+  coiDeclared Boolean      @default(false)
+  coiNote     String?
+  inFgd       Boolean      @default(false)
+  inDelphi    Boolean      @default(false)
+  inAhp       Boolean      @default(false)
+  cvFileKey   String?
+  persona     PersonaBrief?
+  seats       PanelSeat[]
+}
+
+model PersonaBrief {
+  id              String             @id @default(cuid())
+  expertId        String             @unique
+  expert          Expert             @relation(fields: [expertId], references: [id], onDelete: Cascade)
+  expertiseAreas  String[]
+  yearsExperience Int?
+  institutionType String?
+  researchFocus   String[]
+  methodStance    String?
+  vocabularyHints String[]
+  emphasisBias    String?
+  deidFindings    Json?
+  status          PersonaBriefStatus @default(DRAFT)
+  approved        Boolean            @default(false)
+  approvedById    String?
+  approvedAt      DateTime?
+  systemPrompt    String
+  promptVersion   String
+}
+
+model Provider {
+  id         String         @id @default(cuid())
+  key        String         @unique
+  label      String
+  baseUrl    String?
+  envKeyName String
+  enabled    Boolean        @default(true)
+  approved   Boolean        @default(false)
+  models     ModelProfile[]
+}
+
+model ModelProfile {
+  id              String      @id @default(cuid())
+  providerId      String
+  provider        Provider    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  modelId         String
+  label           String
+  contextWindow   Int?
+  inputCostPer1k  Decimal?    @db.Decimal(10, 6)
+  outputCostPer1k Decimal?    @db.Decimal(10, 6)
+  seats           PanelSeat[]
+  @@unique([providerId, modelId])
+}
+
+model PanelConfig {
+  id                 String       @id @default(cuid())
+  name               String
+  preset             String
+  panelSize          Int
+  facilitatorModelId String?
+  notetakerModelId   String?
+  seats              PanelSeat[]
+  fgdSessions        FgdSession[]
+  delphiRounds       DelphiRound[]
+  ahpSessions        AhpSession[]
+  createdAt          DateTime     @default(now())
+}
+
+model PanelSeat {
+  id             String       @id @default(cuid())
+  configId       String
+  config         PanelConfig  @relation(fields: [configId], references: [id], onDelete: Cascade)
+  seatIndex      Int
+  label          String
+  expertId       String?
+  expert         Expert?      @relation(fields: [expertId], references: [id])
+  modelProfileId String
+  modelProfile   ModelProfile  @relation(fields: [modelProfileId], references: [id])
+  field          ExpertField
+  temperature    Float        @default(0.7)
+  seed           Int?
+  isNewMember    Boolean      @default(false)
+  contextScope   String       @default("FULL")
+  @@unique([configId, seatIndex])
+}
+
+model FgdSession {
+  id           String          @id @default(cuid())
+  versionId    String
+  version      ArtifactVersion @relation(fields: [versionId], references: [id])
+  configId     String
+  config       PanelConfig     @relation(fields: [configId], references: [id])
+  dataOrigin   DataOrigin      @default(SIMULATED)
+  mode         RunMode         @default(STEP)
+  status       RunStatus       @default(QUEUED)
+  agendaPreset String          @default("CORONG_11")
+  startedAt    DateTime?
+  endedAt      DateTime?
+  stages       FgdStage[]
+}
+
+model FgdStage {
+  id        String     @id @default(cuid())
+  sessionId String
+  session   FgdSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  order     Int
+  key       String
+  title     String
+  status    RunStatus  @default(QUEUED)
+  items     FgdItem[]
+}
+
+model FgdItem {
+  id          String             @id @default(cuid())
+  stageId     String
+  stage       FgdStage           @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  targetType  String
+  targetCode  String
+  utterances  FgdUtterance[]
+  positions   FgdPosition[]
+  suggestions FgdSuggestion[]
+  decision    FgdDecisionRecord?
+}
+
+model FgdUtterance {
+  id         String     @id @default(cuid())
+  itemId     String
+  item       FgdItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  speaker    String
+  seatIndex  Int?
+  turn       Int
+  content    String
+  modelId    String?
+  promptHash String?
+  tokensIn   Int?
+  tokensOut  Int?
+  latencyMs  Int?
+  createdAt  DateTime   @default(now())
+}
+
+model FgdPosition {
+  id        String          @id @default(cuid())
+  itemId    String
+  item      FgdItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  seatIndex Int
+  position  FgdPositionType
+  reason    String
+  @@unique([itemId, seatIndex])
+}
+
+model FgdSuggestion {
+  id               String     @id @default(cuid())
+  itemId           String
+  item             FgdItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  seatIndex        Int
+  action           ActionType
+  quote            String
+  rationale        String
+  adopted          Boolean?
+  notAdoptedReason String?
+}
+
+model FgdDecisionRecord {
+  id        String          @id @default(cuid())
+  itemId    String          @unique
+  item      FgdItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  decision  FgdDecisionType
+  tally     Json
+  ruleFired String
+  note      String?
+  createdAt DateTime        @default(now())
+}
+
+model DelphiRound {
+  id            String          @id @default(cuid())
+  versionId     String
+  version       ArtifactVersion @relation(fields: [versionId], references: [id])
+  configId      String
+  config        PanelConfig     @relation(fields: [configId], references: [id])
+  dataOrigin    DataOrigin      @default(SIMULATED)
+  roundNumber   Int
+  status        RunStatus       @default(QUEUED)
+  panelSize     Int
+  ratings       DelphiRating[]
+  results       DelphiItemResult[]
+  scaleSCviAve  Float?
+  @@unique([versionId, roundNumber])
+}
+
+model DelphiRating {
+  id          String       @id @default(cuid())
+  roundId     String
+  round       DelphiRound  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  indicatorId String
+  indicator   Indicator    @relation(fields: [indicatorId], references: [id])
+  seatIndex   Int
+  relevance   Int?
+  clarityFlag Boolean      @default(false)
+  clarityNote String?
+  dataOrigin  DataOrigin   @default(SIMULATED)
+  @@unique([roundId, indicatorId, seatIndex])
+}
+
+model DelphiItemResult {
+  id          String      @id @default(cuid())
+  roundId     String
+  round       DelphiRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  indicatorId String
+  iCvi        Float
+  median      Float
+  iqr         Float
+  validRaters Int
+  decision    DelphiDecision
+  reason      String?
+  @@unique([roundId, indicatorId])
+}
+
+model AhpSession {
+  id          String          @id @default(cuid())
+  versionId   String
+  version     ArtifactVersion @relation(fields: [versionId], references: [id])
+  configId    String
+  config      PanelConfig     @relation(fields: [configId], references: [id])
+  dataOrigin  DataOrigin      @default(SIMULATED)
+  scope       String
+  status      RunStatus       @default(QUEUED)
+  aggregation String          @default("GEOMETRIC_MEAN")
+  matrices    AhpMatrix[]
+  weights     AhpWeight[]
+  sensitivity SensitivityScenario[]
+}
+
+model AhpMatrix {
+  id         String     @id @default(cuid())
+  sessionId  String
+  session    AhpSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seatIndex  Int
+  level      String
+  parentCode String?
+  size       Int
+  cells      Json
+  lambdaMax  Float?
+  ci         Float?
+  cr         Float?
+  accepted   Boolean    @default(false)
+  revisionOf String?
+  @@unique([sessionId, seatIndex, level, parentCode])
+}
+
+model AhpWeight {
+  id         String     @id @default(cuid())
+  sessionId  String
+  session    AhpSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  level      String
+  parentCode String?
+  targetCode String
+  seatIndex  Int?
+  weight     Float
+  archived   Boolean    @default(false)
+  @@index([sessionId, level, parentCode])
+}
+
+model SensitivityScenario {
+  id          String     @id @default(cuid())
+  sessionId   String
+  session     AhpSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name        String
+  mutation    Json
+  result      Json
+  rankChanged Boolean
+}
+
+model Assessment {
+  id               String           @id @default(cuid())
+  versionId        String
+  institutionLabel String
+  dataOrigin       DataOrigin       @default(SIMULATED)
+  assessorRef      String
+  status           RunStatus        @default(QUEUED)
+  scores           IndicatorScore[]
+  rollup           Json?
+  createdAt        DateTime         @default(now())
+}
+
+model IndicatorScore {
+  id              String      @id @default(cuid())
+  assessmentId    String
+  assessment      Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  indicatorId     String
+  indicator       Indicator   @relation(fields: [indicatorId], references: [id])
+  level           Int?
+  missingKind     MissingKind @default(NONE)
+  evidenceLocator String?
+  rationale       String?
+  @@unique([assessmentId, indicatorId])
+}
+
+model Form {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  title        String
+  purpose      String
+  instructions String?
+  versionLabel String
+  status       FormStatus    @default(HOLD)
+  stageTag     Stage?
+  /// SHA-256 of the verified source snapshot the form was built from.
+  sourceSha256 String?
+  /// Build plan, signature, readiness config, and allowed respondent codes.
+  settings     Json?
+  openedAt     DateTime?
+  closedAt     DateTime?
+  sections     FormSection[]
+  responses    FormResponse[]
+  createdAt    DateTime      @default(now())
+}
+
+model FormSection {
+  id          String      @id @default(cuid())
+  formId      String
+  form        Form        @relation(fields: [formId], references: [id], onDelete: Cascade)
+  order       Int
+  title       String
+  description String?
+  nextRule    Json?
+  fields      FormField[]
+}
+
+model FormField {
+  id        String      @id @default(cuid())
+  sectionId String
+  section   FormSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  order     Int
+  key       String
+  type      String
+  label     String
+  helpText  String?
+  required  Boolean     @default(false)
+  options   Json?
+  config    Json?
+  branching Json?
+  @@unique([sectionId, key])
+}
+
+model FormResponse {
+  id            String     @id @default(cuid())
+  formId        String
+  form          Form       @relation(fields: [formId], references: [id], onDelete: Cascade)
+  dataOrigin    DataOrigin @default(SIMULATED)
+  respondentRef String?
+  submittedAt   DateTime?
+  completed     Boolean    @default(false)
+  answers       Json
+  meta          Json?
+  updatedAt     DateTime   @default(now()) @updatedAt
+
+  /// One response (draft or submitted) per respondent code per form.
+  @@unique([formId, respondentRef])
+}
+
+model PipelineRun {
+  id         String    @id @default(cuid())
+  name       String
+  versionId  String
+  configId   String
+  mode       RunMode   @default(STEP)
+  status     RunStatus @default(QUEUED)
+  stagesPlan Json
+  budgetUsd  Decimal?  @db.Decimal(10, 4)
+  spentUsd   Decimal   @default(0) @db.Decimal(10, 4)
+  startedAt  DateTime?
+  endedAt    DateTime?
+  steps      RunStep[]
+}
+
+model RunStep {
+  id          String      @id @default(cuid())
+  runId       String
+  run         PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  order       Int
+  stage       Stage
+  label       String
+  status      RunStatus   @default(QUEUED)
+  gateChecked String?
+  error       String?
+  tokensIn    Int         @default(0)
+  tokensOut   Int         @default(0)
+  costUsd     Decimal     @default(0) @db.Decimal(10, 4)
+  startedAt   DateTime?
+  endedAt     DateTime?
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorKind  String
+  action     String
+  targetType String?
+  targetId   String?
+  payload    Json?
+  createdAt  DateTime @default(now())
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  /// Least privilege by default; Admin assigns the role explicitly.
+  role         Role      @default(PAKAR)
+  /// scrypt hash. Null means the account signs in with Google only.
+  passwordHash String?
+  image        String?
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  /// Expert code (e.g. P01) bound by an Admin; responses store only this code.
+  panelCode    String?   @unique
+  createdAt    DateTime  @default(now())
+}
+
+model PanelistIdentity {
+  id          String @id @default(cuid())
+  panelCode   String @unique
+  fullName    String
+  email       String?
+  institution String?
+  note        String?
+}
