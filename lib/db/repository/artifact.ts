@@ -185,3 +185,45 @@ export async function getArtifactSnapshot(versionId: string): Promise<ArtifactSn
     })),
   };
 }
+
+export interface HierarchyIndicator {
+  code: string;
+  name: string;
+  isControlledException: boolean;
+  operationalDefinition: string | null;
+}
+export interface HierarchyAspect {
+  code: string;
+  name: string;
+  indicators: HierarchyIndicator[];
+}
+export interface HierarchyDomain {
+  code: string;
+  name: string;
+  aspects: HierarchyAspect[];
+}
+
+/** Domain → aspect → indicator in stored order, for the dashboard map. */
+export async function getArtifactHierarchy(versionId: string): Promise<HierarchyDomain[]> {
+  const prisma = await db();
+  const domains = await prisma.domain.findMany({
+    where: { versionId },
+    orderBy: { order: "asc" },
+    select: {
+      code: true,
+      name: true,
+      aspects: {
+        orderBy: { order: "asc" },
+        select: {
+          code: true,
+          name: true,
+          indicators: {
+            orderBy: { order: "asc" },
+            select: { code: true, name: true, isControlledException: true, operationalDefinition: true },
+          },
+        },
+      },
+    },
+  });
+  return domains;
+}
