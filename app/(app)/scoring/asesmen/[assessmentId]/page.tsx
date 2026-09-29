@@ -9,6 +9,7 @@ import { DomainProfile } from "@/components/organisms/scoring/domain-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SectionTemplate } from "@/components/templates/section-template";
+import { LiveFeed } from "@/components/organisms/live-feed";
 import { requirePermission } from "@/lib/auth/session";
 import { getAssessmentView } from "@/lib/db/repository/scoring-runs";
 import { getTranslator } from "@/lib/i18n/server";
@@ -53,6 +54,7 @@ export default async function AssessmentPage({ params }: PageProps<"/scoring/ase
         </CardContent>
       </Card>
 
+      <LiveFeed refKey={`Assessment:${a.id}`} />
       {rollup ? (
         <Card>
           <CardContent className="pt-6">

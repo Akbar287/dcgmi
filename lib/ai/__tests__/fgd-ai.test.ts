@@ -62,4 +62,11 @@ describe("FGD roles under MOCK_AI=1", () => {
     expect(quoteProblem({ suggestions: [{ seatIndex: 2, action: "HAPUS", quote: "kalimat karangan", rationale: "r" }] }, bySeat)).toMatch(/bukan substring/);
     expect(quoteProblem({ suggestions: [{ seatIndex: 5, action: "HAPUS", quote: "x", rationale: "r" }] }, bySeat)).toMatch(/tidak berbicara/);
   });
+
+  it("compares quotes after formatting-only normalisation; words must still match", () => {
+    const bySeat = new Map([[1, "Menurut saya **indikator ini**   terlalu “umum” —\nperlu dipecah."]]);
+    const q = (quote: string) => quoteProblem({ suggestions: [{ seatIndex: 1, action: "PECAH", quote, rationale: "r" }] }, bySeat);
+    expect(q('indikator ini terlalu "umum" - perlu dipecah')).toBeNull();
+    expect(q("indikator ini terlalu luas")).toMatch(/bukan substring/);
+  });
 });

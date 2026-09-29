@@ -9,6 +9,7 @@ import { z } from "zod";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
+import { createPilotRun, declarePilot, nextPilotAssessment } from "@/lib/db/repository/pilot";
 import { createAssessment, saveInstitutionProfile, saveRecomputeReport, ScoringError, setAssessmentStatus } from "@/lib/db/repository/scoring-runs";
 import { parseBudget } from "@/lib/validation/budget";
 import { runNextScore, SCORING_PROMPT_VERSIONS, type ScoringRunOutcome } from "@/lib/scoring/run-item";
@@ -108,5 +109,63 @@ export async function uploadRecomputeReportAction(_s: ActionResult | null, formD
     return fromScoring(error);
   }
   revalidatePath("/", "layout");
+  return { ok: true, data: null };
+}
+
+// ── Pilot (G7) ───────────────────────────────────────────────────────
+
+export async function createPilotAction(_s: ActionResult | null, formData: FormData): Promise<ActionResult | null> {
+  const user = await runner();
+  if (!user) return fail("FORBIDDEN", "simulation:run");
+  const versionId = await getActiveVersionId();
+  if (!versionId) return fail("VALIDATION_ERROR", "Tidak ada versi artefak aktif.");
+  const seed = Number(formData.get("seed") || randomInt(0, 2_147_483_647));
+  try {
+    await createPilotRun({
+      actorId: user.id,
+      versionId,
+      profileIds: formData.getAll("profileIds").map(String),
+      assessorA: String(formData.get("assessorA") ?? ""),
+      assessorB: String(formData.get("assessorB") ?? ""),
+      seed: Number.isInteger(seed) ? seed : 0,
+      promptVersions: SCORING_PROMPT_VERSIONS,
+    });
+  } catch (error) {
+    return fromScoring(error);
+  }
+  revalidatePath("/scoring", "layout");
+  return { ok: true, data: null };
+}
+
+export async function runPilotStepAction(runId: string): Promise<ActionResult<ScoringRunOutcome | { kind: "PILOT_DONE" }>> {
+  const user = await runner();
+  if (!user) return fail("FORBIDDEN", "simulation:run");
+  const next = await nextPilotAssessment(runId);
+  if (!next) return { ok: true, data: { kind: "PILOT_DONE" } };
+  const outcome = await runNextScore(next.id);
+  revalidatePath("/scoring/pilot");
+  return { ok: true, data: outcome };
+}
+
+const declSchema = z.object({
+  kind: z.enum(["ETHICS", "ACCESS"]),
+  reference: z.string().trim().max(200).optional().transform((v) => v || null),
+  date: z.string().trim().max(20).optional().transform((v) => v || null),
+  note: z.string().trim().max(2000).optional().transform((v) => v || null),
+});
+
+// G7 declarations are the researcher's statement of record (Admin).
+export async function declarePilotAction(_s: ActionResult | null, formData: FormData): Promise<ActionResult | null> {
+  const user = await getCurrentUser();
+  if (!user || !can(user.role, "gate:pass")) return fail("FORBIDDEN", "gate:pass");
+  const parsed = declSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail("VALIDATION_ERROR", "deklarasi");
+  const d = parsed.data;
+  if (d.kind === "ETHICS" && (!d.reference || !d.date)) return fail("VALIDATION_ERROR", "Nomor dan tanggal izin etik wajib diisi.");
+  if (d.kind === "ACCESS" && (!d.note || d.note.length < 10)) return fail("VALIDATION_ERROR", "Uraikan akses institusi (min. 10 karakter).");
+  const versionId = await getActiveVersionId();
+  if (!versionId) return fail("VALIDATION_ERROR", "Tidak ada versi artefak aktif.");
+  await declarePilot(user.id, versionId, d);
+  revalidatePath("/scoring/pilot");
   return { ok: true, data: null };
 }

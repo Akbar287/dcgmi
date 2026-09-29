@@ -44,7 +44,7 @@ export interface ArgueContext extends ComponentContext {
 
 export const FGD_SEAT_ARGUE: PromptSpec<ArgueContext> = {
   id: "fgd.seat.argue",
-  version: "1.0.0",
+  version: "1.1.0",
   render: (c) => `Tahap agenda: ${c.stageTitle}
 Komponen: ${c.componentTitle}
 
@@ -54,7 +54,7 @@ ${c.brief}
 PENYAJIAN FASILITATOR
 ${c.presentation}
 
-Berikan argumen Anda tentang komponen ini dari sudut pandang bidang Anda. Sebut masalah konkret bila ada — tumpang tindih, definisi ganda, bukti yang sulit diperoleh di PT Indonesia, deskriptor yang tidak terbedakan — dan usulan perbaikan yang spesifik. Bila komponen sudah memadai, katakan setuju dan jelaskan alasannya; jangan mencari kesalahan yang tidak ada. Maksimal ${c.maxWords} kata.
+Berikan argumen Anda tentang komponen ini dari sudut pandang bidang Anda. Sebut masalah konkret bila ada — tumpang tindih, definisi ganda, bukti yang sulit diperoleh di PT Indonesia, deskriptor yang tidak terbedakan — dan usulan perbaikan yang spesifik. Bila komponen sudah memadai, katakan setuju dan jelaskan alasannya; jangan mencari kesalahan yang tidak ada. Langsung ke inti: tanpa pembukaan, tanpa mengulang isi komponen. Maksimal ${c.maxWords} kata.
 
 ${SIMULATION_BOUNDARY}`,
 };
@@ -66,7 +66,7 @@ export interface CrossTalkContext extends ArgueContext {
 
 export const FGD_SEAT_CROSSTALK: PromptSpec<CrossTalkContext> = {
   id: "fgd.seat.crosstalk",
-  version: "1.0.0",
+  version: "1.1.0",
   render: (c) => `Komponen: ${c.componentTitle}
 
 ARGUMEN ANDA
@@ -75,7 +75,7 @@ ${c.ownArgument}
 ARGUMEN ANGGOTA PANEL LAIN
 ${c.others.map((o) => `${o.label}: ${o.text}`).join("\n\n")}
 
-Tanggapi argumen anggota panel lain secara singkat: di mana Anda setuju, di mana tidak, dan apakah ada yang mengubah pandangan Anda. Maksimal ${Math.round(c.maxWords / 2)} kata.
+Tanggapi argumen anggota panel lain secara singkat: di mana Anda setuju, di mana tidak, dan apakah ada yang mengubah pandangan Anda. Langsung ke inti, tanpa mengulang argumen. Maksimal ${Math.round(c.maxWords / 2)} kata.
 
 ${SIMULATION_BOUNDARY}`,
 };
@@ -113,11 +113,13 @@ export const FGD_NOTETAKER_SYSTEM = `Anda notulis FGD dalam simulasi uji instrum
 
 export const FGD_NOTETAKER_EXTRACT: PromptSpec<NoteContext> = {
   id: "fgd.notetaker.extract",
-  version: "1.0.0",
+  version: "1.1.0",
   render: (c) => `Komponen: ${c.componentTitle}
 
 TRANSKRIP
 ${c.transcript.map((u) => `[seatIndex ${u.seatIndex}] ${u.label}: ${u.text}`).join("\n\n")}
 
-Ekstrak setiap usulan perubahan konkret dari anggota panel. Untuk tiap usulan: seatIndex pembicara, tindakan (TAMBAH, HAPUS, GABUNG, PECAH, PINDAH, RUMUS_ULANG), kutipan VERBATIM dari ucapan kursi tersebut (disalin persis, tanpa diubah), dan alasan singkat. Bila tidak ada usulan, kembalikan daftar kosong.`,
+Ekstrak setiap usulan perubahan konkret dari anggota panel. Untuk tiap usulan: seatIndex pembicara, tindakan (TAMBAH, HAPUS, GABUNG, PECAH, PINDAH, RUMUS_ULANG), kutipan VERBATIM dari ucapan kursi tersebut (disalin persis, tanpa diubah), dan alasan singkat. Bila tidak ada usulan, kembalikan daftar kosong.
+
+ATURAN KUTIPAN: salin satu kalimat atau klausa (maks. 30 kata) dari SATU bagian ucapan yang utuh, karakter demi karakter, termasuk tanda baca dan huruf besar-kecil. Jangan menggabungkan potongan, jangan memakai elipsis, jangan merapikan.`,
 };

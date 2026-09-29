@@ -5,6 +5,7 @@ import { db } from "../client";
 import { evaluateAhpGateFor } from "./ahp-sessions";
 import { getArtifactSnapshot } from "./artifact";
 import { evaluateContentLockFor } from "./content-lock";
+import { evaluatePilotGateFor } from "./pilot";
 import { evaluateScoringGateFor } from "./scoring-runs";
 import { evaluateDelphiGateFor } from "./delphi-gate";
 import { evaluateFgdGateFor } from "./fgd-gate";
@@ -30,6 +31,10 @@ const EVALUATORS: Partial<Record<GateKey, (versionId: string) => Promise<GateEva
   },
   G6_SCORING: async (versionId) => {
     const e = await evaluateScoringGateFor(versionId);
+    return { gate: e.gate, passed: e.passed, unmet: e.unmet, warnings: e.warnings };
+  },
+  G7_PILOT: async (versionId) => {
+    const e = await evaluatePilotGateFor(versionId);
     return { gate: e.gate, passed: e.passed, unmet: e.unmet, warnings: e.warnings };
   },
 };

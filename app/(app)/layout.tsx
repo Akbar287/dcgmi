@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { AppTopbar, type GateState } from "@/components/organisms/app-topbar";
 import { AppShell } from "@/components/templates/app-shell";
 import { requirePermission } from "@/lib/auth/session";
-import { listGateRecords, listVersions } from "@/lib/db/repository/artifact";
+import { listLineageGates, listVersions } from "@/lib/db/repository/artifact";
 import { tryQuery } from "@/lib/db/result";
 import { getTranslator } from "@/lib/i18n/server";
 import { GATE_ORDER, type GateKey } from "@/lib/method/gates";
@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   const shell = await tryQuery(async () => {
     const [versions, activeVersionId] = await Promise.all([listVersions(), getActiveVersionId()]);
-    const gates = activeVersionId ? await listGateRecords(activeVersionId) : [];
+    const gates = activeVersionId ? await listLineageGates(activeVersionId) : [];
     return { versions, activeVersionId, gates };
   });
 
@@ -36,7 +36,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       }))
     : [];
   const gates: GateState[] = shell.ok
-    ? shell.data.gates.filter((g) => isGateKey(g.gate)).map((g) => ({ gate: g.gate as GateKey, status: g.status }))
+    ? shell.data.gates.filter((g) => isGateKey(g.gate)).map((g) => ({ gate: g.gate as GateKey, status: g.status, versionLabel: g.versionLabel }))
     : [];
 
   return (

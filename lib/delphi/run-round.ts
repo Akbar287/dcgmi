@@ -4,7 +4,7 @@ import { BudgetExceededError, withCallSink, type CallTarget } from "@/lib/ai/cal
 import { rate, seatContext, type DelphiSeatRuntime } from "@/lib/ai/delphi";
 import { DELPHI_SEAT_RATE } from "@/lib/ai/prompts/delphi";
 import { failDelphiRound, loadDelphiRunContext, nextDelphiItem, saveDelphiItem, setDelphiRoundStatus, type DelphiRoundSettings, type SeatRatingRow } from "@/lib/db/repository/delphi-rounds";
-import { createCallSink } from "@/lib/db/repository/model-calls";
+import { createCallSink, getSeatThinking } from "@/lib/db/repository/model-calls";
 import { hash32 } from "@/lib/fgd/agenda";
 import { indicatorPackage } from "@/lib/fgd/component-brief";
 import { buildRoundFeedback } from "@/lib/method/cvi";
@@ -48,6 +48,7 @@ async function runItem(roundId: string): Promise<DelphiRunOutcome> {
     await failDelphiRound(roundId, error);
     return { kind: "DEVIATION", code: item.code, error };
   }
+  const thinking = await getSeatThinking();
   const seats: DelphiSeatRuntime[] = round.config.seats.map((s) => {
     if (s.expert?.persona?.status !== "APPROVED") throw new Error(`${s.label} tidak memiliki persona APPROVED.`);
     return {
@@ -55,7 +56,7 @@ async function runItem(roundId: string): Promise<DelphiRunOutcome> {
       label: s.label,
       field: s.field,
       systemPrompt: s.expert.persona.systemPrompt,
-      target: targetOf(s.modelProfile, { temperature: s.temperature, seed: s.seed ?? round.seed }),
+      target: targetOf(s.modelProfile, { temperature: s.temperature, seed: s.seed ?? round.seed, thinking }),
       contextScope: s.isNewMember || s.contextScope === "ARTIFACT_ONLY" ? "ARTIFACT_ONLY" : "FULL",
     };
   });

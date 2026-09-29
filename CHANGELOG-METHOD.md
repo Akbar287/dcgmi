@@ -177,3 +177,72 @@ Tidak ada konstanta yang berubah. Aturan Tabel 3.6 dan G3 dipakai apa adanya unt
 | Formulir aktif hanya oleh Admin, bila struktur valid (tanpa siklus), ada responden, dan gate sebelum tahapnya lulus | SPECIFICATION §4.2 | Instrumen tidak dibuka sebelum waktunya |
 | Unggah berkas ditunda | — | Menunggu penyimpanan berkas dikonfigurasi |
 
+---
+
+## 2026-09-29 — Peneliti utama — Pilot bersyarat (G7), PDF, dan aliran langsung
+
+Tidak ada konstanta yang berubah; ambang Tabel 3.8 dipakai apa adanya. Baru di `lib/method/pilot.ts`: `quadraticWeightedKappa`, `exactAgreement`, `pilotCompleteness`, `pilotTraceability`, `evaluatePilotGate` (vektor P1–P5, G7-1…G7-6, docs/05 §5.6 dan §6; nilai κw dihitung independen dengan Python sebelum implementasi).
+
+| Keputusan | Rujukan | Alasan |
+|---|---|---|
+| κ = Cohen berbobot kuadratik antara dua asesor atas level 1–5; tanpa variasi → tidak terdefinisi (memblokir), bukan 1 | Tabel 3.8 | Level ordinal; κ tidak boleh dibulatkan menjadi sempurna |
+| Kesepakatan = level persis sama | Tabel 3.8 | Tafsir paling ketat |
+| Kelengkapan = level terisi bukan MISSING_ADMINISTRATIF; keterlacakan = setiap level ≥ 2 punya locator verbatim dan bukti wajib tercatat | Tabel 3.8 | Dapat dihitung dari data asesmen |
+| Butir MISSING_ADMINISTRATIF pada salah satu asesor dikeluarkan dari κ/kesepakatan dan dilaporkan | §3.10.1 | Tanpa imputasi |
+| Pilot di aplikasi = pilot antar-asesor simulasi (dua model berbeda, profil fiktif), selalu berlabel `SIMULATED_PILOT`; G7 juga memerlukan deklarasi etik dan akses institusi dari Admin | §3.11, §3.12 | Menguji stabilitas rubrik tanpa klaim pilot institusional |
+| Asesmen pilot (`purpose = PILOT`) tidak dihitung untuk G6 dan tidak masuk ekspor rekalkulasi penskoran | docs/05 §6 | Satu keputusan gate per data |
+
+
+---
+
+## 2026-09-29 — Peneliti utama — Laporan lengkap G1–G7 (PDF)
+
+Tidak ada konstanta yang berubah dan tidak ada perhitungan baru; laporan hanya membaca data dan evaluasi gate yang sudah ada.
+
+| Keputusan | Rujukan | Alasan |
+|---|---|---|
+| Laporan memuat seluruh data versi aktif dan garis turunannya, termasuk transkrip FGD utuh dan ledger `ModelCall` — bukan ringkasan | §3.14 | Jejak komputasional lengkap dalam satu dokumen |
+| Narasi bab oleh `anthropic/claude-sonnet-5` (prompt `report.chapter.narrate` v1.0.0) dari fakta terstruktur + kutipan transkrip; tanpa persona, CV, atau identitas | §3.13, docs/07 P6 | Narasi tidak boleh menjadi jalur kebocoran data pakar |
+| Setiap bab wajib ditinjau dan disetujui Admin; PDF tidak dapat dibangun sebelum 10/10 bab disetujui, dan dibuang bila bab berubah | docs/07 P7 | Narasi model tidak pernah terbit tanpa pemeriksaan peneliti |
+| Watermark di setiap halaman, nama berkas `SIM_`, tanpa opsi menonaktifkan | docs/07 P4 | Laporan simulasi tidak terbaca sebagai hasil |
+
+---
+
+## 2026-09-29 — Peneliti utama — Dry-run lengkap dengan AI nyata dan "AI peneliti"
+
+Tidak ada konstanta di `lib/method/constants.ts` yang berubah. Semua data uji ZZ dihapus atas permintaan peneliti (cadangan `pg_dump` dibuat sebelumnya); baseline DCGMI-A1.0, formulir pra-reviu, akun, dan jejak audit disimpan.
+
+| Keputusan | Rujukan | Alasan / konsekuensi |
+|---|---|---|
+| Panel P01–P06 (FGD) dan P07–P08 (Delphi baru) dari CV pakar asli; nama dan institusi hanya di `PanelistIdentity`; persona diisi dari CV tanpa penanda identitas; tiap pakar dipasangkan ke model Gateway yang berbeda | docs/04 §4, docs/07 P6 | CV tidak diproses aplikasi dan tidak dikirim ke provider |
+| **Penyimpangan komposisi §3.7.1/§3.8.1:** tidak ada CV berbidang sustainability; P05 (kursi 6 FGD) dan P08 (kursi 8 Delphi) tetap berlabel SUSTAINABILITY, tetapi persona mengikuti CV (masing-masing praktisi TI PTS dan konsultan SPBE) | SPECIFICATION §141 | Sudut pandang sustainability tidak terwakili; label kursi tidak mencerminkan isi CV |
+| **Penyimpangan prosedur P7:** keputusan peneliti (resolusi PEMBAHASAN_KHUSUS, adopsi usulan, penerapan revisi, tinjauan kejelasan Delphi, revisi antar-ronde, content lock, profil fiktif, tinjauan narasi laporan) dibuat oleh "AI peneliti" `anthropic/claude-sonnet-5.5` dan dicatat atas nama akun Admin dengan label `[AI peneliti · anthropic/claude-sonnet-5.5 · atas nama Admin]`. Gate hanya diluluskan bila evaluator `lib/method` lulus; tidak ada bypass | docs/07 P7 | Atas permintaan peneliti utama; semua keputusan tercatat di AuditEvent, ChangeLogEntry, dan ledger `ModelCall` |
+| Kebijakan AI peneliti: struktur 8–15–43 dijaga (TAMBAH/HAPUS/GABUNG/PECAH/PINDAH hanya bila argumennya kuat dan didukung >1 kursi); indikator baru (TAMBAH/PECAH) ditunda; C20b/C42 tidak disunting (butuh keputusan versi eksplisit peneliti) | CH-08, keputusan "item baru ditunda" | Tugas revisi yang ditunda dicatat `AI_RESEARCHER_REVISION_DEFERRED` |
+| **Deklarasi G7 fiktif:** atas permintaan peneliti, deklarasi etik memakai nomor `FIKTIF-SIM-ETIK-<acak>` tanggal 2026-09-29, dan deklarasi akses menyatakan akses institusi fiktif; keduanya berlabel "BUKAN persetujuan etik" | Tabel 3.8, §3.11 | G7 dapat diuji tanpa menyiratkan izin etik yang tidak ada |
+| Jumlah PEMBAHASAN_KHUSUS tidak diatur; hasil panel diterima apa adanya | Tabel 3.5 | Keluaran AI tidak disunting |
+| Notulis FGD: claude-haiku-4.5 → claude-sonnet-5 → **openai/gpt-5.4** dan prompt `fgd.notetaker.extract` v1.1.0 (kutipan maks. 30 kata dari satu bagian utuh). Validasi kutipan verbatim tidak dilonggarkan; gpt-5.4 lolos validasi pada 4/4 transkrip nyata, model lain tidak. Komponen yang selesai sebelumnya tercatat dengan notulis dan versi prompt lamanya di ledger | docs/04 §5, docs/09 | Kegagalan skema berulang memaksa komponen diulang penuh |
+| Penghematan token (keputusan peneliti, 29 Sep 2026 ±03:40 UTC): argumen kursi maks. 250 → **150 kata**, tanggapan silang 125 → **75 kata**, prompt `fgd.seat.argue`/`fgd.seat.crosstalk` v1.1.0 ("langsung ke inti"). Komponen yang selesai sebelumnya memakai v1.0.0 (terlihat di ledger per panggilan); thinking model tidak diubah | docs/04 §4.4, docs/09 | Biaya FGD diperkirakan melampaui plafon; tanggapan silang tetap dipertahankan |
+| Thinking rendah untuk kursi panel (keputusan peneliti, 29 Sep 2026 ±04:00 UTC): `ai.seatThinking = "low"` untuk sisa FGD, Delphi, dan AHP (Qwen/DeepSeek tanpa thinking, Gemini Flash minimal, OpenAI low; Anthropic/Mistral tidak berubah). Uji: token output Qwen 1.249 → 165, DeepSeek 913 → 232, Gemini Flash 1.136 → 251 untuk jawaban setara. Komponen sebelumnya memakai thinking bawaan | docs/04 §9 | Penghematan token; isi jawaban yang terlihat tetap dibatasi prompt |
+| Kredit Gateway habis pukul 04:55 UTC; setelah diisi ulang ($24,6) dipakai model lebih murah: AI peneliti claude-sonnet-5.5 → **openai/gpt-5.4-mini** (thinking rendah) untuk sisa keputusan (label `[AI peneliti · openai/gpt-5.4-mini …]`); asesor G6 dan pilot A gpt-5.5 → **gpt-5.4-mini**; asesor pilot B gemini-3.5-flash → **deepseek-v4-pro**; plafon run 80 → 50 USD. Keputusan adopsi AI peneliti diproses 6 komponen paralel | docs/07 §5 | Anggaran; keputusan sebelumnya tetap berlabel model lamanya |
+| **Insiden & koreksi (29 Sep 2026 ±05:54 UTC):** saat menerapkan revisi domain/aspek, AI peneliti (gpt-5.4-mini) menulis nama perannya ("AI peneliti") sebagai nama D7, A02, A05, A07 di A1.1. Delphi R1 yang sedang berjalan (11 butir, 88 rating) dinilai dengan label keliru, sehingga dihapus (AuditEvent `DELPHI_ROUND_DELETE`; baris ledger panggilannya tetap disimpan) dan diulang. Nama dikoreksi lewat `updateGroup` (ChangeLogEntry "Koreksi: …"), hasilnya sama dengan nama baseline; prompt revisi kini menegaskan "name" = nama komponen dan validasi menolak nama berisi "peneliti". Indikator, rubrik, dan bukti diperiksa bersih | docs/07 P3 | Keluaran simulasi yang tercemar tidak boleh menjadi dasar G3 |
+| **Insiden & koreksi (29 Sep 2026 ±06:13 UTC):** tinjauan Delphi R1 oleh AI peneliti gpt-5.4-mini menandai 43/43 butir "isu kejelasan kritis" dan 11 "konflik konstruk" (I-CVI rata-rata 0,997), sehingga 11 butir berkeputusan HAPUS_DARI_INTI tanpa dasar. Atas keputusan peneliti utama R1 dihapus dan diulang atas isi A1.1 saat ini (termasuk 40 suntingan C01–C04 yang sempat dibuat); tinjauan Delphi memakai **claude-sonnet-5.5** dengan kriteria tegas (prompt `researcher.delphi.review` v1.1.0: kritis hanya bila makna berubah/tidak dapat dinilai konsisten; konflik konstruk hanya bila kursi menyatakan konstruk lain; ragu → false) | §3.8.2, docs/05 G3 | Keputusan peneliti tidak boleh membalik hasil panel tanpa dasar |
+| **Keputusan peneliti utama tentang C20b/C42 (29 Sep 2026):** pada dry-run ini kedua controlled exception **mengikuti aturan Delphi biasa**; bila tinjauan menetapkan konflik konstruk, keduanya dapat berkeputusan HAPUS_DARI_INTI dan tidak ikut content lock. Peneliti menyatakan memahami konsekuensinya | CH-08, CLAUDE.md rambu C20b/C42 | Keputusan versi eksplisit untuk dry-run |
+| Asesor penskoran: gpt-5.4-mini berulang memberi level di atas plafon bukti wajib (melewatkan bukti wajib level 2, mis. C33/C38) dan locator tidak verbatim. Asesmen profil "Institut Vokasi Pesisir" (27/42) **dibatalkan** dan diulang penuh dengan **claude-sonnet-5.5**; asesmen "PTN Satker Kepulauan" (gpt-5.4-mini, selesai) dipertahankan. Pilot G7: asesor A claude-sonnet-5.5, B gemini-3.5-flash. Umpan balik penolakan plafon kini menyebut bukti wajib yang belum dipilih (aturan `evidenceLevelCap` tidak berubah). Temuan instrumen: model cenderung menganggap bukti level lebih tinggi mencakup bukti wajib level di bawahnya | docs/05 §5.5 | Validasi plafon dan locator tidak dilonggarkan |
+| FGD dijalankan 3 komponen paralel (driver + 2 worker); tiap komponen tetap berurutan argumen → tanggapan silang → voting → notulis | SPECIFICATION §4.5 | Komponen saling independen (brief dari artefak); hanya waktu yang berubah |
+| Perbaikan teknis (bukan metodologis): ruang token penalaran +4096 untuk panggilan model nyata (`lib/ai/call.ts`), batas output notulis 12000, alasan voting maks. 1200 karakter, alasan rating Delphi maks. 1000 dan catatan kejelasan 600 karakter (skor 1–4 dan I-CVI tidak berubah), alasan pasangan AHP maks. 800 karakter (preferensi/intensitas tidak berubah), prompt asesor `scoring.assessor.evidence` v1.1.0 (locator tanpa tanda kutip pembungkus; validasi verbatim tetap), percobaan ulang skema menyertakan alasan penolakan, perbandingan kutipan notulis setelah normalisasi format saja (`normalizeQuote`), harga katalog untuk model baru (`priceSource` null) | docs/04 §5, §9 | Model penalaran (Gemini 3.x, GPT-5.x, DeepSeek V4, Qwen 3.6) memotong JSON sebelum selesai |
+| **Hasil akhir dry-run (29 Sep 2026 07:56 UTC):** A1.0 G1–G2 PASSED; A1.1 G1–G3 PASSED (R1: 31 PERTAHANKAN, 11 REVISI, 1 HAPUS C05; R2: 11 PERTAHANKAN; S-CVI/Ave ≈ 0,997); A2.0 (8–15–42) G4–G6 PASSED (G5 dengan 7 matriks `MATRIX_RETURNED_UNRESOLVED`; G6 rekalkulasi 0 perbedaan). **G7 tidak lulus**: κw 0,385 < 0,60 dan kesepakatan 0,732 < 0,80 (sonnet-5.5 vs gemini-3.5-flash) — dilaporkan apa adanya, pilot tidak diulang untuk mengejar angka. Laporan PDF G1–G7 810 halaman; 4 bab (pendahuluan, G2, G6, penutup) disetujui AI peneliti setelah satu kali buat ulang dengan isu tersisa dan perlu ditinjau peneliti. Total biaya ledger $47,98 | Tabel 3.8, §3.11 | Temuan uji instrumen: tafsir deskriptor rubrik dan tangga bukti wajib belum stabil antarpenilai |
+
+---
+
+## 2026-09-29 — Peneliti utama — Laporan Word tanpa watermark dan grafik per gate
+
+Tidak ada konstanta atau perhitungan yang berubah.
+
+| Keputusan | Rujukan | Alasan / konsekuensi |
+|---|---|---|
+| **Laporan Word (.docx) G1–G7 tanpa watermark, tanpa catatan simulasi, dan tanpa awalan `SIM_`** — atas permintaan eksplisit peneliti utama setelah diberi tahu risikonya (docs/07 P4, pagar prosedural #1). PDF dan ekspor lain tetap berwatermark | docs/07 P4, CLAUDE.md rambu watermark | Peneliti menyatakan memahami bahwa dokumen dapat terbaca sebagai hasil penelitian; setiap unduhan tercatat `EXPORT_REPORT_DOCX` (`watermark: false`) |
+| PDF dan Word dibangun dari daftar blok yang sama; 51 grafik (batang, bertumpuk, berkelompok, kolom, donut, heatmap, garis, tornado, dot-range) di setiap gate, masing-masing diikuti tabel lengkap; palet kategorikal tetap, satu rampa biru untuk besaran, nilai dicetak, legenda untuk ≥ 2 seri | SPECIFICATION §4.10 | Keterbacaan; grafik tidak menggantikan tabel |
+| Nama peneliti utama pada akun Admin diisi "Prof. Dr. Syopiansyah Jaya Putra, M.Sis" (AuditEvent `USER_UPDATE`); sampul laporan menyatakan keputusan dan persetujuan bab dibuat AI peneliti atas nama peneliti utama | docs/07 P7 | Atribusi yang benar untuk keputusan AI |
+| Nama pakar P01–P08 dicantumkan **hanya** di tabel "Komposisi panel" pada Word yang diunduh Admin, dengan keterangan bahwa isi diskusi adalah keluaran model AI; label kursi di seluruh tabel memakai kode persona ("Pakar 1 · P02"); nama tidak ditempelkan pada ujaran atau penilaian | docs/07 P6 | Mencegah pernyataan simulasi terbaca sebagai pernyataan pakar nyata |
+| **PDF laporan G1–G7 juga tanpa watermark, peringatan footer/metadata, dan awalan `SIM_`** — permintaan eksplisit peneliti utama (keputusan yang sama dengan versi Word; peneliti telah diberi tahu risikonya). `ReportWriter` mendapat opsi `marks` (bawaan `true`); hanya laporan G1–G7 memakai `marks: false`. Ekspor tabel dan paket reproduksi tetap berwatermark; kriteria §6.5 mencatat pengecualian ini | docs/07 P4 | Keputusan peneliti |
+

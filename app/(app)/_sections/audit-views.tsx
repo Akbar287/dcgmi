@@ -1,13 +1,19 @@
 import { CheckmarkCircle02Icon, CancelCircleIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
+import Link from "next/link";
+
+import { ActionForm } from "@/components/molecules/action-form";
+import { BudgetField } from "@/components/molecules/budget-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { can } from "@/lib/auth/roles";
 import { db } from "@/lib/db/client";
 import { evaluateAcceptance } from "@/lib/db/repository/acceptance";
+import { listReportJobs } from "@/lib/db/repository/report-jobs";
 import { formatDateTime } from "@/lib/format";
 import { NAV_MODULES } from "@/lib/navigation";
 
+import { createReportAction } from "../audit/report-actions";
 import { SECTIONS } from "./registry";
 import type { SectionContext, SectionDef } from "./types";
 
@@ -39,7 +45,7 @@ export async function ExportView({ t, user }: SectionContext) {
                   <li key={slug} className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
                     <span className="truncate">{t.maybe(`nav.sections.${g.key}.${slug}`) ?? slug}</span>
                     <span className="flex gap-1">
-                      {(["csv", "xlsx", "json"] as const).map((f) => (
+                      {(["csv", "xlsx", "json", "pdf"] as const).map((f) => (
                         <a key={f} className={link} href={`/api/export/table?module=${g.key}&section=${slug}&format=${f}`} download>
                           {f.toUpperCase()}
                         </a>
@@ -93,11 +99,40 @@ export async function ExportView({ t, user }: SectionContext) {
   );
 }
 
-export async function ReproductionView({ t, versionId }: SectionContext) {
+export async function ReproductionView({ t, user, versionId }: SectionContext) {
   const criteria = await evaluateAcceptance(versionId);
   const ready = criteria.every((c) => c.ok);
+  const reports = versionId ? await listReportJobs(versionId) : [];
   return (
     <>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("report.cardTitle")}</CardTitle>
+          <CardDescription>{t("report.cardHint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {can(user.role, "simulation:run") ? (
+            <ActionForm action={createReportAction} submitLabel={t("report.create")}>
+              <BudgetField id="report-budget" />
+            </ActionForm>
+          ) : null}
+          {reports.length ? (
+            <ul className="flex flex-col gap-1 text-sm">
+              {reports.map((r) => (
+                <li key={r.id} className="flex flex-wrap justify-between gap-2">
+                  <Link href={`/audit/laporan/${r.id}`} className="underline underline-offset-4">
+                    {formatDateTime(r.createdAt, t.locale)}
+                  </Link>
+                  <span className="text-xs text-muted-foreground">
+                    {t.maybe(`report.status.${r.status}`) ?? r.status}
+                    {r.pages ? ` · ${r.pages} hlm.` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>{t("acceptance.packageTitle")}</CardTitle>

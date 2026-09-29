@@ -8,7 +8,7 @@ import type { AssessorOutput } from "../schemas";
 // "C07: tidak ada praktik …" → TIDAK_ADA_KAPABILITAS at level 1,
 // "C09: … level 4" → level 4. Other indicators get level 2–4 from a hash.
 
-export function mockAssessment(code: string, c: AssessContext, seed: number): AssessorOutput {
+export function mockAssessment(code: string, c: AssessContext, seed: number, variant = ""): AssessorOutput {
   const lines = c.profileText.split("\n").map((l) => l.trim()).filter(Boolean);
   const line = lines.find((l) => l.toUpperCase().startsWith(`${code.toUpperCase()}:`));
   const text = line?.toLowerCase() ?? "";
@@ -18,7 +18,10 @@ export function mockAssessment(code: string, c: AssessContext, seed: number): As
   if (/tidak ada/.test(text)) {
     return { missingKind: "TIDAK_ADA_KAPABILITAS", level: 1, satisfiedEvidence: [], evidenceLocator: line ?? null, rationale: `[MOCK] Profil menyatakan praktik ${code} belum ada.` };
   }
-  const target = Number(/level\s+([1-5])/.exec(text)?.[1] ?? 2 + (hash32(`${seed}|${code}`) % 3));
+  const base = Number(/level\s+([1-5])/.exec(text)?.[1] ?? 2 + (hash32(`${seed}|${code}`) % 3));
+  // A second assessor (another model) disagrees by one level on about 1 in 8 items.
+  const shift = variant && hash32(`${variant}|${code}`) % 8 === 0 ? (hash32(`${variant}|${code}|dir`) % 2 ? 1 : -1) : 0;
+  const target = Math.min(5, Math.max(2, base + shift));
   const satisfied = c.evidence.filter((e) => e.mandatory && (e.minimumFor ?? 1) <= target).map((e) => e.id);
   return {
     missingKind: "NONE",

@@ -4,6 +4,8 @@
 
 Sidebar kiri (dapat diciutkan) · topbar dengan pemilih **Versi Artefak** aktif dan **indikator gate** · area konten · panel kanan kontekstual (detail/inspector).
 
+Indikator gate di topbar menampilkan **garis proses** versi aktif (keputusan peneliti, 29 Sep 2026): leluhur, versi itu sendiri, dan turunan terbarunya (mis. A1.0 → A1.1 → A2.0). Setiap G1–G7 memakai catatan terjauh di garis itu, dan tooltip menyebut versi pemegangnya. Tombol meluluskan gate di Dasbor tetap berlaku untuk versi aktif saja (`listLineageGates`).
+
 **Dasbor** memuat, berurutan: alur proses tujuh tahap (tahap saat ini, input, syarat gate, output, yang kurang, dan tahap berikutnya), evaluasi G1 dengan keputusan Admin, struktur artefak, dan pemetaan domain → aspek → indikator.
 
 **Banner origin.** Bila konteks aktif adalah data `SIMULATED`, sebuah strip berwarna muncul di bawah topbar: *"Mode simulasi — keluaran bukan data penelitian"*. Strip ini tidak dapat ditutup.

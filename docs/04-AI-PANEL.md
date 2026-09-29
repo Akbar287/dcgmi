@@ -154,7 +154,7 @@ const NoteExtractionSchema = z.object({
 });
 ```
 
-Validasi: `quote` harus benar-benar substring dari utterance kursi tersebut. Bila tidak, ekstraksi diulang sekali; bila gagal lagi, langkah ditandai `FAILED`.
+Validasi: `quote` harus benar-benar substring dari utterance kursi tersebut. Perbandingan dilakukan setelah normalisasi format saja (spasi, penanda Markdown `*`/`_`/`` ` ``, variasi tanda kutip, tanda pisah, dan elipsis); kata-katanya tetap harus sama persis. Bila tidak, ekstraksi diulang sekali; bila gagal lagi, langkah ditandai `FAILED`.
 
 ---
 
@@ -173,7 +173,7 @@ Voting **tidak** diambil dari teks bebas. Setiap kursi dipanggil ulang dengan `g
 ```ts
 const VoteSchema = z.object({
   position: z.enum(['TERIMA','TERIMA_DENGAN_REVISI','TOLAK']),
-  reason:   z.string().min(20).max(600),
+  reason:   z.string().min(20).max(1200),   // dilonggarkan 29 Sep 2026: model tertentu berargumen panjang
   proposedAction: z.enum(['TAMBAH','HAPUS','GABUNG','PECAH','PINDAH','RUMUS_ULANG']).nullable(),
 });
 ```
@@ -194,9 +194,9 @@ Rating Delphi memakai `generateObject`:
 ```ts
 const RatingSchema = z.object({
   relevance:   z.number().int().min(1).max(4),
-  reason:      z.string().min(10).max(400),   // alasan singkat kursi (M6)
+  reason:      z.string().min(10).max(1000),  // alasan singkat kursi (M6); 400 → 1000 pada 29 Sep 2026
   clarityFlag: z.boolean(),
-  clarityNote: z.string().max(300).nullable(),
+  clarityNote: z.string().max(600).nullable(),   // 300 → 600 pada 29 Sep 2026
 });
 ```
 
@@ -214,7 +214,7 @@ Kursi tidak diminta mengisi matriks `n×n` sekaligus — beban itu memicu inkons
 const PairwiseSchema = z.object({
   preferred: z.enum(['A','B','EQUAL']),
   intensity: z.number().int().min(1).max(9),   // 1 bila EQUAL
-  reason:    z.string().max(300),
+  reason:    z.string().max(800),   // 300 → 800 pada 29 Sep 2026
 });
 ```
 
@@ -243,6 +243,8 @@ Prompt `scoring.assessor.evidence` v1.0.0 (`lib/ai/prompts/scoring.ts`), tanpa p
 **Implementasi (26 Sep 2026):** `lib/ai/call.ts` menjalankan setiap panggilan di dalam *call sink* (`withCallSink`, AsyncLocalStorage) yang dipasang lapisan koordinasi (`lib/*/run-*.ts`, `lib/db/repository/model-calls.ts`). Sebelum panggilan dikirim, estimasi batas atasnya (karakter prompt / 3,5 × harga input + `maxOutputTokens` × harga output) dibandingkan dengan sisa **anggaran sesi**, **anggaran run**, dan **plafon bulanan** (Pengaturan → Anggaran); bila melampaui, panggilan ditolak (`BudgetExceededError`) dan sesi berhenti dengan alasan ANGGARAN — bukan dicatat sebagai kegagalan kursi. Dengan anggaran apa pun yang berlaku, model tanpa harga ditolak. Setelah panggilan (juga percobaan yang gagal skema), satu baris `ModelCall` ditulis dengan biaya dari harga profil model; `MOCK_AI` selalu $0. Harga per 1.000 token diambil dari katalog Gateway (`priceSource = CATALOG`) atau diisi manual (`MANUAL`, tidak ditimpa katalog).
 
 ---
+
+**Thinking kursi (keputusan peneliti, 29 Sep 2026).** Setelan `ai.seatThinking = "low"` (AppSetting, AuditEvent `SEAT_THINKING_SET`) meneruskan opsi provider untuk kursi panel FGD/Delphi/AHP saja: Qwen `enableThinking: false`, DeepSeek `thinking: disabled`, Gemini Flash `thinkingLevel: minimal` (Pro: `low`), OpenAI `reasoningEffort: low`; Anthropic dan Mistral tanpa opsi (`lowThinkingOptions`, `lib/ai/models.ts`). Fasilitator, notulis, AI peneliti, dan asesor tidak terpengaruh. Panggilan model nyata mendapat ruang token penalaran +4096 (`REASONING_HEADROOM`).
 
 ## 10. Yang tidak boleh dilakukan orkestrator
 

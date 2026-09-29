@@ -21,7 +21,7 @@ export function exportOrigin(origins: (string | null | undefined)[], module: str
 /** Anything not verifiably REAL-only carries the watermark. */
 export const needsWatermark = (origin: ExportOrigin) => origin !== "REAL";
 
-export function exportFilename(base: string, ext: "csv" | "xlsx" | "json", origin: ExportOrigin) {
+export function exportFilename(base: string, ext: "csv" | "xlsx" | "json" | "pdf", origin: ExportOrigin) {
   const safe = base.replace(/[^A-Za-z0-9._-]+/g, "_");
   if (!needsWatermark(origin)) return `${safe}.${ext}`;
   // docs/07 §3.1: every simulated export starts with SIM_; CSV also ends with _SIMULATED.

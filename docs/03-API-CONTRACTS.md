@@ -284,6 +284,29 @@ uploadRecomputeReportAction(formData { report: File })        // diterima hanya 
 
 Route handler `GET /api/export/recompute` (console:read): ekspor deterministik versi aktif — `delphiItems` (versi Delphi dalam garis turunan), `ahpMatrices`, `ahpAggregates`, `assessments` — dengan `_warning` + `_dataOrigin` dan nama berkas `SIM_recompute_<label>.json`; header `X-Export-SHA256`.
 
+### Pilot (G7)
+
+```ts
+// app/(app)/scoring/scoring-actions.ts
+createPilotAction(formData { profileIds[]; assessorA; assessorB; seed? })   // simulation:run; G6 PASSED; A ≠ B; asesmen purpose=PILOT
+runPilotStepAction(runId) → ScoringRunOutcome | { kind: "PILOT_DONE" }
+declarePilotAction(formData { kind: ETHICS (reference, date) | ACCESS (note) })   // gate:pass (Admin); AuditEvent PILOT_DECLARE_*
+// G7 dievaluasi evaluatePilotGate (lib/method/pilot.ts) atas pasangan A/B run pilot terakhir; diluluskan lewat passGateAction.
+```
+
+### Laporan lengkap G1–G7
+
+```ts
+// app/(app)/audit/report-actions.ts
+createReportAction(formData { budget? })                 // simulation:run; ReportJob untuk versi aktif + garis turunannya → redirect /audit/laporan/[id]
+advanceReportAction(jobId)                               // simulation:run; menarasikan satu bab PENDING per panggilan (ledger kind REPORT, anggaran job); semua bab → REVIEW
+editChapterAction(formData { jobId; key; narrative ≥20 }) // artifact:write; bab kembali DRAFT, ditandai "disunting peneliti"
+chapterOpAction(jobId, key, "APPROVE" | "REGENERATE")    // APPROVE: gate:pass (Admin); REGENERATE: simulation:run; PDF yang sudah dibangun dibuang bila bab berubah
+buildReportAction(formData { jobId })                    // simulation:run; ditolak kecuali 10/10 bab APPROVED; menyimpan PDF, SHA-256, jumlah halaman; AuditEvent REPORT_BUILD
+```
+
+Route handler `GET /api/report/[jobId]` (console:read): mengirim PDF tersimpan sebagai `Laporan_G1-G7_<label>.pdf`, header `X-Report-SHA256`, AuditEvent `EXPORT_REPORT`. Isi PDF dibangun dari basis data (tabel lengkap, bukan ringkasan); narasi AI hanya pengantar tiap bab.
+
 ### Formulir
 
 ```ts
@@ -361,9 +384,12 @@ refreshCatalogPricesAction()                            // panel:manage; katalog
 | `/api/runs/[id]/events` | GET | SSE status pipeline |
 | `/api/export/[kind]` | POST | Menghasilkan CSV/XLSX/JSON/PDF berwatermark |
 | `/api/export/reproduction/[runId]` | GET | ZIP paket reproduksibilitas |
-| `/api/export/table?module&section&format=csv\|xlsx\|json` | GET | **Terimplementasi:** ekspor tabel section mana pun, watermark docs/07 P4 (tidak dapat dimatikan) |
+| `/api/events?ref=<FgdSession\|DelphiRound\|AhpSession\|Assessment\|PipelineRun>:<id>` | GET | **Terimplementasi:** SSE `status`, `call` (baris ledger), `end`; `Last-Event-ID` = waktu panggilan terakhir |
+| `/api/export/table?module&section&format=csv\|xlsx\|json\|pdf` | GET | **Terimplementasi:** ekspor tabel section mana pun, watermark docs/07 P4 (tidak dapat dimatikan) |
 | `/api/export/recompute` | GET | **Terimplementasi:** ekspor deterministik untuk `scripts/recompute.py` (versi aktif) |
 | `/api/export/reproduction` | GET | **Terimplementasi:** ZIP paket reproduksibilitas versi aktif + garis turunannya, dengan manifest SHA-256 |
+| `/api/report/[jobId]` | GET | **Terimplementasi:** PDF laporan lengkap G1–G7 yang sudah disetujui per bab (`Laporan_G1-G7_<label>.pdf`; tanpa watermark sejak 29 Sep 2026 atas keputusan peneliti) |
+| `/api/report/[jobId]/docx` | GET | **Terimplementasi:** versi Word (.docx) laporan yang sama, dibangun saat diunduh dari bab yang sudah disetujui (tanpa panggilan model); tanpa watermark, catatan simulasi, atau awalan `SIM_` atas keputusan peneliti 29 Sep 2026; AuditEvent `EXPORT_REPORT_DOCX` |
 | `/api/forms/[slug]/submit` | POST | Pengiriman formulir publik (rate-limited) |
 | `/api/forms/[slug]/autosave` | POST | Simpan otomatis jawaban parsial |
 | `/api/files/signed-url` | POST | URL bertanda tangan untuk CV/lampiran |

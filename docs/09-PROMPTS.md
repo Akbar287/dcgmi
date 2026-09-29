@@ -35,16 +35,17 @@ Mengubah isi prompt **wajib** menaikkan `version`. Run yang sudah tersimpan teta
 | `persona.system` | System prompt kursi | teks |
 | `fgd.facilitator.present` | Fasilitator | teks penyajian komponen |
 | `fgd.facilitator.probe` | Fasilitator | probe sesuai §3.7.2 |
-| `fgd.seat.argue` | Kursi | argumen |
-| `fgd.seat.crosstalk` | Kursi | tanggapan atas argumen lain |
+| `fgd.seat.argue` (v1.1.0: maks. 150 kata, langsung ke inti) | Kursi | argumen |
+| `fgd.seat.crosstalk` (v1.1.0: maks. 75 kata, langsung ke inti) | Kursi | tanggapan atas argumen lain |
 | `fgd.seat.vote` | Kursi | `VoteSchema` |
-| `fgd.notetaker.extract` | Notulis | `NoteExtractionSchema` |
+| `fgd.notetaker.extract` (v1.1.0: aturan kutipan maks. 30 kata dari satu bagian utuh) | Notulis | `NoteExtractionSchema` |
 | `fgd.summarize.item` | Notulis | ringkasan komponen |
 | `delphi.seat.rate` | Kursi | `RatingSchema` |
 | `delphi.seat.comment` | Kursi | komentar kejelasan |
 | `ahp.seat.pairwise` | Kursi | `PairwiseSchema` |
 | `ahp.seat.review` | Kursi | revisi pasangan tidak konsisten |
-| `scoring.assessor.evidence` | Simulasi asesor | pilihan level + locator + alasan |
+| `scoring.assessor.evidence` (v1.1.0: locator tanpa tanda kutip pembungkus) | Simulasi asesor | pilihan level + locator + alasan |
+| `report.chapter.narrate` (v1.0.0) | Narasi bab laporan G1–G7 (`anthropic/claude-sonnet-5`) | teks polos 3–6 paragraf, ≤ 700 kata, hanya dari fakta bab |
 
 ---
 

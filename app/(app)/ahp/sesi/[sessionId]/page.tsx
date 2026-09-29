@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SectionTemplate } from "@/components/templates/section-template";
+import { LiveFeed } from "@/components/organisms/live-feed";
 import { requirePermission } from "@/lib/auth/session";
 import { getAhpSessionView, groupKey } from "@/lib/db/repository/ahp-sessions";
 import { formatNumber } from "@/lib/format";
@@ -66,6 +67,7 @@ export default async function AhpSessionPage({ params }: PageProps<"/ahp/sesi/[s
         </CardContent>
       </Card>
 
+      <LiveFeed refKey={`AhpSession:${session.id}`} />
       {groups.map((g) => {
         const rows = latest.filter((m) => groupKey(m.level, m.parentCode) === g.key);
         const accepted = rows.filter((m) => m.status === "ACCEPTED" && m.cells);

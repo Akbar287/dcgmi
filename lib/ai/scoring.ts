@@ -14,7 +14,13 @@ export function assessmentProblem(value: AssessorOutput, c: AssessContext): stri
   const unknown = value.satisfiedEvidence.filter((id) => !ids.has(id));
   if (unknown.length) return `id bukti tidak dikenal: ${unknown.join(", ")}`;
   if (value.satisfiedEvidence.length && !value.evidenceLocator?.trim()) return "bukti terpenuhi tanpa locator";
-  if (value.evidenceLocator && !c.profileText.includes(value.evidenceLocator)) return "locator bukan kutipan verbatim dari profil";
+  if (value.evidenceLocator && !c.profileText.includes(value.evidenceLocator)) {
+    // Still rejected; the hint only tells the retry what differs (a common slip: capitalising a mid-sentence start).
+    const caseOnly = c.profileText.toLowerCase().includes(value.evidenceLocator.toLowerCase());
+    return caseOnly
+      ? "locator bukan kutipan verbatim dari profil: huruf besar/kecil berbeda — salin persis seperti di profil, termasuk huruf pertama bila kutipan dimulai di tengah kalimat"
+      : "locator bukan kutipan verbatim dari profil";
+  }
   return null;
 }
 
@@ -32,7 +38,7 @@ export async function assessIndicator(
     text: SCORING_ASSESSOR_EVIDENCE.render(c),
     schema: AssessmentSchema,
     maxOutputTokens: 600,
-    mock: () => mockAssessment(code, c, mockSeed),
+    mock: () => mockAssessment(code, c, mockSeed, target.modelId),
     validate: (v) => assessmentProblem(v, c) ?? extra(v),
   });
 }

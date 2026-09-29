@@ -42,7 +42,13 @@ Isi peringatan: *"KELUARAN SIMULASI — controlled dry-run internal. Bukan data 
 
 Tidak ada parameter untuk menonaktifkannya.
 
-**Implementasi:** `lib/export/watermark.ts` (murni, diuji) menentukan asal data dari baris ekspor; apa pun yang tidak terbukti REAL saja diberi watermark, termasuk tabel tanpa kolom origin di modul simulasi dan tabel artefak. Berlaku untuk `/api/export/table`, ekspor rekalkulasi, dan paket reproduksibilitas. Kriteria §6.5 diperiksa langsung di Audit → Paket Reproduksi.
+**Implementasi:** `lib/export/watermark.ts` (murni, diuji) menentukan asal data dari baris ekspor; apa pun yang tidak terbukti REAL saja diberi watermark, termasuk tabel tanpa kolom origin di modul simulasi dan tabel artefak. Berlaku untuk `/api/export/table`, ekspor rekalkulasi, dan paket reproduksibilitas. Kriteria §6.5 diperiksa langsung di Audit → Paket Reproduksi. PDF (`lib/export/pdf.ts`): watermark diagonal di setiap halaman, judul dan asal data di header, teks peringatan lengkap di footer; karakter di luar WinAnsi ditransliterasi (mis. ≥ → >=), tidak dibuang.
+
+**Pengecualian — laporan lengkap G1–G7, Word dan PDF (keputusan peneliti utama, 29 Sep 2026).** Versi PDF dan .docx laporan lengkap G1–G7 (`lib/export/report-docx.ts`, `/api/report/[jobId]/docx`) dibuat **tanpa watermark, tanpa catatan simulasi di sampul/footer, dan tanpa awalan `SIM_`** atas permintaan eksplisit peneliti yang menyatakan memahami risikonya (dokumen dapat terbaca sebagai hasil penelitian). Isi data tetap memuat asal data per baris bila ada (mis. `SIMULATED` pada ronde) dan narasi tetap menyebut keluaran simulasi. Ekspor tabel (CSV/XLSX/JSON/PDF) dan paket reproduksi tetap mengikuti P4 tanpa pengecualian. Unduhan tercatat `EXPORT_REPORT` (PDF) dan `EXPORT_REPORT_DOCX` (`watermark: false`).
+
+**Identitas panelis di laporan (keputusan peneliti utama, 29 Sep 2026).** Nama pakar hanya muncul di satu tabel "Komposisi panel" pada laporan **Word yang diunduh Admin** (P6; PDF tersimpan dan unduhan non-Admin memakai kode P01–P08). Tabel itu menyatakan bahwa persona disusun dari CV dan bahwa semua ujaran, posisi, rating, dan alasan adalah keluaran model AI, bukan pernyataan pakar; nama tidak pernah ditempelkan pada ujaran atau penilaian. Sampul laporan menyatakan bahwa keputusan prosedural dan persetujuan bab dibuat AI peneliti atas nama peneliti utama.
+
+**Laporan lengkap G1–G7** (`lib/export/report-pdf.ts`) semula memakai watermark di setiap halaman dan nama berkas `SIM_`; sejak 29 Sep 2026 dikecualikan (lihat di atas). Narasi bab ditulis `anthropic/claude-sonnet-5` melalui AI Gateway (perantara yang disetujui, §4). Yang dikirim hanya fakta terstruktur bab (`lib/report/facts.ts`): angka, kode komponen, keputusan, dan kutipan transkrip/saran FGD — **tanpa** persona, CV, `PersonaBrief`, atau `PanelistIdentity`; kursi dirujuk dengan labelnya. Prompt mewajibkan model memakai fakta yang diberikan saja dan menyebut keluaran sebagai simulasi, bukan temuan. Narasi tidak masuk PDF sebelum Admin menyetujui bab itu; setiap bab mencantumkan model, waktu, dan apakah disunting peneliti. Seluruh tabel dan grafik dibangun dari basis data, bukan dari narasi.
 
 ### P5 — Banner UI permanen
 Strip peringatan di bawah topbar setiap kali konteks aktif `SIMULATED`. Tidak dapat ditutup. Muncul juga pada pratinjau cetak dan tangkapan layar.
@@ -59,7 +65,7 @@ Tidak ada flag `--force`, tidak ada mode admin yang melewati gate, tidak ada var
 
 Hal-hal yang tidak bisa dipaksakan oleh kode, tetapi harus disepakati tim:
 
-1. **Penamaan berkas.** Setiap ekspor simulasi berawalan `SIM_`. Jangan diubah saat menyimpan.
+1. **Penamaan berkas.** Setiap ekspor simulasi berawalan `SIM_`. Jangan diubah saat menyimpan. Pengecualian tercatat: laporan Word G1–G7 (lihat P4).
 2. **Slide dan naskah.** Tangkapan layar dari aplikasi ini hanya boleh dipakai untuk menjelaskan *kesiapan instrumen*, disertai keterangan bahwa isinya simulasi. Jangan pernah untuk mengilustrasikan temuan.
 3. **Logbook Litapdimas.** Kegiatan dry-run dicatat sebagai *pengembangan dan uji instrumen*, bukan sebagai pelaksanaan FGD atau Delphi.
 4. **Penyimpanan.** Direktori hasil simulasi terpisah dari direktori data lapangan. Tidak pernah satu folder.

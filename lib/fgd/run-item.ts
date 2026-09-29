@@ -14,7 +14,7 @@ import {
   type SessionSettings,
 } from "@/lib/db/repository/fgd-sessions";
 import { db } from "@/lib/db/client";
-import { createCallSink } from "@/lib/db/repository/model-calls";
+import { createCallSink, getSeatThinking } from "@/lib/db/repository/model-calls";
 import { applyFgdDecisionRule } from "@/lib/method/fgd";
 
 import { hash32, seededShuffle, type StageKey } from "./agenda";
@@ -57,6 +57,7 @@ async function runItem(sessionId: string): Promise<RunOutcome> {
     const notetakerProfile = profiles.find((p) => p.id === session.config.notetakerModelId);
     if (!facilitatorProfile || !notetakerProfile) throw new Error("Model fasilitator/notulis belum dikonfigurasi pada panel.");
 
+    const thinking = await getSeatThinking();
     const seats: SeatRuntime[] = session.config.seats.map((s) => {
       if (s.expert?.persona?.status !== "APPROVED") throw new Error(`${s.label} tidak memiliki persona APPROVED.`);
       return {
@@ -64,7 +65,7 @@ async function runItem(sessionId: string): Promise<RunOutcome> {
         label: s.label,
         field: s.field,
         systemPrompt: s.expert.persona.systemPrompt,
-        target: targetOf(s.modelProfile, { temperature: s.temperature, seed: s.seed ?? session.seed }),
+        target: targetOf(s.modelProfile, { temperature: s.temperature, seed: s.seed ?? session.seed, thinking }),
       };
     });
 

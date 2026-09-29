@@ -7,6 +7,7 @@ import { RunRunner } from "@/components/organisms/pipeline/run-runner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionTemplate } from "@/components/templates/section-template";
+import { LiveFeed } from "@/components/organisms/live-feed";
 import { requirePermission } from "@/lib/auth/session";
 import { getRunView } from "@/lib/db/repository/pipeline";
 import { formatDateTime, formatNumber } from "@/lib/format";
@@ -67,6 +68,7 @@ export default async function RunPage({ params }: PageProps<"/runs/jalur/[runId]
           <RunRunner runId={run.id} status={run.status} mode={run.mode} advanceAction={advanceRunAction} controlAction={runControlAction} />
         </CardContent>
       </Card>
+      <LiveFeed refKey={`PipelineRun:${run.id}`} />
       <Card>
         <CardHeader>
           <CardTitle>{t("pipeline.timeline")}</CardTitle>

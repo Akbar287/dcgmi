@@ -55,7 +55,7 @@ BASELINE ──▶ FGD ──▶ DELPHI_CVI ──▶ CONTENT_LOCK ──▶ AHP
 | `G4_CONTENT_LOCK` | Admin mengunci struktur secara eksplisit; setelah ini perubahan struktur memicu pembukaan ulang gate | §3.9.1 |
 | `G5_AHP` | Setiap matriks individual CR < 0,10; agregasi geometris tercatat; sensitivitas dijalankan | §3.9.2 |
 | `G6_SCORING` | Uji formula lulus; penanganan data hilang terverifikasi; rekalkulasi independen identik | §3.10, §3.14 |
-| `G7_PILOT` | Bersyarat: etik, akses institusi, stabilitas rubrik | §3.11 |
+| `G7_PILOT` | Bersyarat: etik, akses institusi, stabilitas rubrik (κw kuadratik ≥ 0,60, kesepakatan persis ≥ 0,80, kelengkapan ≥ 0,90, keterlacakan = 1; docs/05 §5.6) | §3.11 |
 
 **Aturan implementasi:** tahap N+1 memanggil `assertGate(N)` di server sebelum mutasi apa pun. Gate yang gagal melempar `GateError` dengan daftar syarat yang belum terpenuhi.
 
@@ -250,7 +250,7 @@ Menjalankan rantai tahap secara otomatis.
 
 **Monitor:** timeline tahap, kartu status per kursi pakar, aliran transkrip langsung, meter biaya berjalan.
 
-**Status implementasi (26 Sep 2026):** perancang run, runner satu-unit-kerja-per-panggilan yang merangkai FGD → versi turunan → Delphi → content lock → AHP → penskoran dan berhenti di setiap gate/keputusan peneliti dengan tautan ke halamannya, monitor timeline + meter biaya, ledger `ModelCall` untuk semua panggilan, anggaran sesi/run/bulanan yang menolak panggilan sebelum dikirim, estimator biaya, ekspor CSV/XLSX/JSON berwatermark untuk setiap tabel, paket ZIP reproduksibilitas, dan cek langsung kriteria §6. PDF belum tersedia. Transkrip "langsung" berupa penyegaran berkala, bukan streaming SSE.
+**Status implementasi (26 Sep 2026):** perancang run, runner satu-unit-kerja-per-panggilan yang merangkai FGD → versi turunan → Delphi → content lock → AHP → penskoran dan berhenti di setiap gate/keputusan peneliti dengan tautan ke halamannya, monitor timeline + meter biaya, ledger `ModelCall` untuk semua panggilan, anggaran sesi/run/bulanan yang menolak panggilan sebelum dikirim, estimator biaya, ekspor CSV/XLSX/JSON berwatermark untuk setiap tabel, paket ZIP reproduksibilitas, dan cek langsung kriteria §6. Ekspor PDF (A4 lanskap, watermark diagonal setiap halaman, header, footer) tersedia untuk setiap tabel. Aliran langsung: SSE `/api/events` mengirim perubahan status dan setiap panggilan model dari ledger begitu tercatat (FGD, Delphi, AHP, asesmen, run), sehingga penonton kedua mengikuti tanpa menekan apa pun; tersambung ulang dengan Last-Event-ID. Token model tidak di-stream per kata — granularitasnya satu panggilan.
 
 ### 4.10 Audit & Export
 
@@ -258,6 +258,9 @@ Menjalankan rantai tahap secara otomatis.
 - `AuditEvent` untuk setiap aksi pengguna dan setiap panggilan model.
 - Ekspor: CSV, XLSX, JSON, PDF. Semua ekspor dari data `SIMULATED` memuat banner dan watermark yang tidak dapat dimatikan.
 - Paket reproduksibilitas: satu berkas ZIP berisi definisi artefak, konfigurasi panel, seluruh prompt, seluruh keluaran mentah, hasil perhitungan, dan hash — memenuhi "jejak komputasional" §3.14.
+- Laporan lengkap G1–G7 (PDF): satu dokumen untuk versi aktif dan seluruh garis turunannya — garis versi dan status gate, artefak lengkap (rubrik, bukti), transkrip FGD utuh beserta posisi/keputusan/saran, diff antarversi dan change log, rating Delphi per kursi dan I-CVI, matriks AHP per kursi, bobot dan sensitivitas, skor asesmen, pilot dan deklarasi G7, serta ledger `ModelCall` penuh. Setiap grafik diikuti tabel datanya.
+
+**Status implementasi (29 Sep 2026):** tombol di Audit → Paket Reproduksi membuat job laporan. Narasi tiap bab (10 bab) ditulis `anthropic/claude-sonnet-5` lewat AI Gateway dari fakta terstruktur bab itu, termasuk kutipan transkrip, lalu wajib ditinjau, boleh disunting, dan disetujui Admin per bab. PDF (A4 potret, daftar isi; tanpa watermark sejak 29 Sep 2026 atas keputusan peneliti) hanya dibangun setelah semua bab disetujui dan disimpan dengan SHA-256. Laporan yang sama tersedia sebagai **Word (.docx)** (tombol "Unduh Word", dibangun saat diunduh dari bab yang disetujui; seperti PDF, tanpa watermark atas keputusan peneliti — docs/07 P4). Kedua format memakai daftar blok yang sama (`lib/report/blocks.ts`) dan 51 grafik (batang, batang bertumpuk/berkelompok, kolom, donut, heatmap, garis, tornado, dot-range) di setiap gate, masing-masing diikuti tabel datanya (`lib/export/chart-svg.ts` → PNG via resvg dengan font DejaVu). Uji dengan data ZZ: ±315 halaman, ±3,2 MB.
 
 ### 4.11 Settings
 

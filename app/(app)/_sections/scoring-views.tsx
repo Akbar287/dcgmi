@@ -68,7 +68,7 @@ export async function ProfileSectionView({ t, user, versionId }: SectionContext)
   const [evaluation, gates, assessments, hierarchy] = await Promise.all([
     evaluateScoringGateFor(versionId),
     prisma.gateRecord.findMany({ where: { versionId, gate: { in: ["G5_AHP", "G6_SCORING"] } } }),
-    prisma.assessment.findMany({ where: { versionId, status: "COMPLETED" }, orderBy: { createdAt: "asc" } }),
+    prisma.assessment.findMany({ where: { versionId, status: "COMPLETED", purpose: "SCORING" }, orderBy: { createdAt: "asc" } }),
     getArtifactHierarchy(versionId),
   ]);
   const g5 = gates.find((g) => g.gate === "G5_AHP");

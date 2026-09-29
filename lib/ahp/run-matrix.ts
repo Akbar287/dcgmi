@@ -5,7 +5,7 @@ import { withCallSink, type CallTarget } from "@/lib/ai/call";
 import type { SeatRuntime } from "@/lib/ai/fgd";
 import { AHP_SEAT_PAIRWISE, AHP_SEAT_REVIEW } from "@/lib/ai/prompts/ahp";
 import { ahpGroupsFor, groupKey, loadAhpRunContext, nextAhpMatrix, saveAhpMatrix, setAhpSessionStatus, type PairRecord } from "@/lib/db/repository/ahp-sessions";
-import { createCallSink } from "@/lib/db/repository/model-calls";
+import { createCallSink, getSeatThinking } from "@/lib/db/repository/model-calls";
 import { hash32 } from "@/lib/fgd/agenda";
 import { buildMatrixFromPairs, pairValue, priorityVector } from "@/lib/method/ahp";
 
@@ -53,7 +53,7 @@ async function runMatrix(sessionId: string): Promise<AhpRunOutcome> {
     label: seatRow.label,
     field: seatRow.field,
     systemPrompt: seatRow.expert.persona.systemPrompt,
-    target: targetOf(seatRow.modelProfile, { temperature: seatRow.temperature, seed: seatRow.seed ?? session.seed }),
+    target: targetOf(seatRow.modelProfile, { temperature: seatRow.temperature, seed: seatRow.seed ?? session.seed, thinking: await getSeatThinking() }),
   };
   const key = groupKey(m.level, m.parentCode);
   const group = (await ahpGroupsFor(session.versionId)).find((g) => g.key === key);

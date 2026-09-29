@@ -85,9 +85,21 @@ export async function planAssessment(versionId: string) {
   return { blocked, weightsSessionId: weights?.sessionId ?? null, indicators };
 }
 
-export async function createAssessment(input: { actorId: string; versionId: string; profileId: string; modelProfileId: string; seed: number; promptVersions: Record<string, string>; budgetUsd?: number | null; runId?: string | null }) {
+export async function createAssessment(input: {
+  actorId: string;
+  versionId: string;
+  profileId: string;
+  modelProfileId: string;
+  seed: number;
+  promptVersions: Record<string, string>;
+  budgetUsd?: number | null;
+  runId?: string | null;
+  /** Pilot assessments (G7) come after G6 and never count for it. */
+  pilot?: { runId: string; role: "A" | "B" } | null;
+}) {
   const plan = await planAssessment(input.versionId);
-  if (plan.blocked.length) throw new ScoringError("GATE", "Asesmen belum dapat dibuat.", plan.blocked);
+  const blocked = input.pilot ? plan.blocked.filter((b) => b !== "G6_ALREADY_PASSED") : plan.blocked;
+  if (blocked.length) throw new ScoringError("GATE", "Asesmen belum dapat dibuat.", blocked);
   const prisma = await db();
   const [profile, model] = await Promise.all([
     prisma.institutionProfile.findUnique({ where: { id: input.profileId } }),
@@ -109,6 +121,9 @@ export async function createAssessment(input: { actorId: string; versionId: stri
         seed: input.seed,
         budgetUsd: input.budgetUsd ?? null,
         runId: input.runId ?? null,
+        purpose: input.pilot ? "PILOT" : "SCORING",
+        pilotRunId: input.pilot?.runId ?? null,
+        pilotRole: input.pilot?.role ?? null,
         settings: { promptVersions: input.promptVersions, estimatedCalls: plan.indicators } as Prisma.InputJsonValue,
         createdById: input.actorId,
       },
@@ -313,7 +328,7 @@ export async function buildRecomputeExport(versionId: string) {
     }
   }
 
-  const assessments = (await prisma.assessment.findMany({ where: { versionId, status: "COMPLETED", dataOrigin: "SIMULATED" }, orderBy: { createdAt: "asc" } })).map((a) => {
+  const assessments = (await prisma.assessment.findMany({ where: { versionId, status: "COMPLETED", dataOrigin: "SIMULATED", purpose: "SCORING" }, orderBy: { createdAt: "asc" } })).map((a) => {
     const r = a.rollup as unknown as ScoringResult & { input: DomainScoreInput[] };
     return {
       id: a.id,
@@ -378,7 +393,7 @@ export async function evaluateScoringGateFor(versionId: string) {
     prisma.artifactVersion.findUniqueOrThrow({ where: { id: versionId }, select: { status: true } }),
     prisma.gateRecord.findUnique({ where: { versionId_gate: { versionId, gate: "G5_AHP" } } }),
     g5Weights(versionId),
-    prisma.assessment.findMany({ where: { versionId, dataOrigin: "SIMULATED" }, include: { scores: { select: { missingKind: true } } } }),
+    prisma.assessment.findMany({ where: { versionId, dataOrigin: "SIMULATED", purpose: "SCORING" }, include: { scores: { select: { missingKind: true } } } }),
     prisma.recomputeCheck.findFirst({ where: { versionId }, orderBy: { createdAt: "desc" } }),
     buildRecomputeExport(versionId),
   ]);

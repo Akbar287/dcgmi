@@ -103,7 +103,7 @@ export function DataTableToolbar({
               {t("exports.menu")}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {(["csv", "xlsx", "json"] as const).map((f) => (
+              {(["csv", "xlsx", "json", "pdf"] as const).map((f) => (
                 <DropdownMenuItem key={f} render={<a href={`${exportHref}&format=${f}`} download />}>
                   {f.toUpperCase()}
                 </DropdownMenuItem>

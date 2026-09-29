@@ -11,6 +11,7 @@ import { RoundRunner } from "@/components/organisms/delphi/round-runner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SectionTemplate } from "@/components/templates/section-template";
+import { LiveFeed } from "@/components/organisms/live-feed";
 import { can } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { realRoundStatus } from "@/lib/db/repository/delphi-real";
@@ -76,6 +77,7 @@ export default async function DelphiRoundPage({ params }: PageProps<"/delphi/ron
         </CardContent>
       </Card>
 
+      <LiveFeed refKey={`DelphiRound:${round.id}`} />
       <Card>
         <CardHeader>
           <CardTitle>{t("delphiSim.room.results")}</CardTitle>

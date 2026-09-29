@@ -28,6 +28,23 @@ function priceOf(prices: Map<string, Price>, modelId: string): Price | null {
   return prices.get(modelId) ?? null;
 }
 
+export const SEAT_THINKING_KEY = "ai.seatThinking";
+
+/** Panel seats' thinking mode (researcher decision 2026-09-29); null = model default. */
+export async function getSeatThinking(): Promise<"low" | null> {
+  const prisma = await db();
+  const row = await prisma.appSetting.findUnique({ where: { key: SEAT_THINKING_KEY } });
+  return (row?.value as { mode?: string } | undefined)?.mode === "low" ? "low" : null;
+}
+
+export async function setSeatThinking(actorId: string, mode: "low" | null) {
+  const prisma = await db();
+  await prisma.$transaction([
+    prisma.appSetting.upsert({ where: { key: SEAT_THINKING_KEY }, create: { key: SEAT_THINKING_KEY, value: { mode }, updatedById: actorId }, update: { value: { mode }, updatedById: actorId } }),
+    prisma.auditEvent.create({ data: { actorId, actorKind: "USER", action: "SEAT_THINKING_SET", targetType: "AppSetting", targetId: SEAT_THINKING_KEY, payload: { mode } } }),
+  ]);
+}
+
 export async function getMonthlyCap(): Promise<number | null> {
   const prisma = await db();
   const row = await prisma.appSetting.findUnique({ where: { key: MONTHLY_CAP_KEY } });
@@ -58,7 +75,7 @@ export const spentForRun = (runId: string) => spent({ runId });
 export const spentThisMonth = () => spent({ createdAt: { gte: monthStart() } });
 
 export interface SinkScope {
-  kind: "FGD" | "DELPHI" | "AHP" | "SCORING" | "PING";
+  kind: "FGD" | "DELPHI" | "AHP" | "SCORING" | "PING" | "REPORT";
   refType: string;
   refId: string;
   versionId?: string | null;
@@ -223,7 +240,8 @@ export async function setModelPrice(actorId: string, modelProfileId: string, inp
 export async function refreshCatalogPrices(actorId: string) {
   const catalog = new Map((await listGatewayModels()).map((m) => [m.id, m.pricing]));
   const prisma = await db();
-  const models = await prisma.modelProfile.findMany({ where: { provider: { key: "gateway" }, NOT: { priceSource: "MANUAL" } } });
+  // priceSource is null for new models; NOT { equals } alone would skip them (SQL NULL).
+  const models = await prisma.modelProfile.findMany({ where: { provider: { key: "gateway" }, OR: [{ priceSource: null }, { priceSource: { not: "MANUAL" } }] } });
   let updated = 0;
   for (const m of models) {
     const p = catalog.get(m.modelId);

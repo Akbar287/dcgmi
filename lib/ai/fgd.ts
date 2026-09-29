@@ -32,7 +32,8 @@ export interface Utterance {
   log: CallLog;
 }
 
-const MAX_WORDS = 250;
+// 250 → 150 on 2026-09-29 (researcher decision: shorter, to-the-point turns to save tokens).
+const MAX_WORDS = 150;
 
 export async function present(facilitator: CallTarget, c: ComponentContext): Promise<Utterance> {
   const r = await callText({
@@ -90,12 +91,27 @@ export async function vote(seat: SeatRuntime, c: ComponentContext, ownStatements
   return { vote: r.value, log: r.log };
 }
 
+/**
+ * Formatting-only normalisation for the verbatim check: whitespace, Markdown
+ * emphasis markers, and quote/dash/ellipsis variants. Words must still match.
+ */
+export const normalizeQuote = (s: string) =>
+  s
+    .normalize("NFKC")
+    .replace(/[*_`]+/g, "")
+    .replace(/[“”„«»]/g, '"')
+    .replace(/[‘’‚]/g, "'")
+    .replace(/[–—−]/g, "-")
+    .replace(/…/g, "...")
+    .replace(/\s+/g, " ")
+    .trim();
+
 /** docs/04 §5: every quote must be verbatim from that seat's own utterances. */
 export function quoteProblem(notes: NoteExtraction, bySeat: Map<number, string>): string | null {
   for (const s of notes.suggestions) {
     const said = bySeat.get(s.seatIndex);
     if (!said) return `seatIndex ${s.seatIndex} tidak berbicara`;
-    if (!said.includes(s.quote)) return `kutipan kursi ${s.seatIndex} bukan substring ucapannya`;
+    if (!normalizeQuote(said).includes(normalizeQuote(s.quote))) return `kutipan kursi ${s.seatIndex} bukan substring ucapannya: ${JSON.stringify(s.quote.slice(0, 120))}`;
   }
   return null;
 }
@@ -113,7 +129,8 @@ export async function extractNotes(
     system: FGD_NOTETAKER_SYSTEM,
     text: FGD_NOTETAKER_EXTRACT.render({ componentTitle, transcript }),
     schema: NoteExtractionSchema,
-    maxOutputTokens: 1500,
+    // Twelve long turns can yield many suggestions with verbatim quotes; 1500 cut the JSON off.
+    maxOutputTokens: 12000,
     mock: () => mockNotes(transcript),
     validate: (notes) => quoteProblem(notes, bySeat),
   });

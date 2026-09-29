@@ -17,7 +17,7 @@ export interface AssessContext {
 
 export const SCORING_ASSESSOR_EVIDENCE: PromptSpec<AssessContext> = {
   id: "scoring.assessor.evidence",
-  version: "1.0.0",
+  version: "1.1.0",
   render: (c) => `PROFIL INSTITUSI FIKTIF — ${c.profileLabel}
 ${c.profileText}
 
@@ -30,7 +30,7 @@ ${c.evidence.map((e) => `${e.id}: [${e.kind}, ${e.mandatory ? "wajib" : "penguat
 Langkah:
 1. missingKind: MISSING_ADMINISTRATIF bila profil menyatakan data/dokumen untuk indikator ini belum diterima atau tidak dapat diakses (level = null); TIDAK_ADA_KAPABILITAS bila institusi memang belum memiliki praktiknya (tetap diberi level, umumnya 1); selain itu NONE.
 2. satisfiedEvidence: id persyaratan bukti yang benar-benar didukung profil.
-3. evidenceLocator: kutipan VERBATIM dari profil yang menjadi dasar bukti (disalin persis); null bila tidak ada bukti.
+3. evidenceLocator: kutipan VERBATIM dari profil yang menjadi dasar bukti (disalin persis, satu kalimat atau klausa yang utuh); JANGAN dibungkus tanda kutip pembuka/penutup dan jangan diawali kode indikator; null bila tidak ada bukti.
 4. level: level tertinggi yang deskriptornya cocok DAN seluruh bukti wajib sampai level itu terpenuhi. Jangan menebak bukti yang tidak disebut profil.
 5. rationale: alasan singkat 10–500 karakter.
 

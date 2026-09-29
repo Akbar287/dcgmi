@@ -277,6 +277,23 @@ Aspek dengan indikator `[4, level 1 (TIDAK_ADA_KAPABILITAS), 3]` → `A = 2.6667
 | E4 | a(2) + penguat x(3) | a | 5 |
 | E5 | n(—), a(2) | a; lalu n, a | 1; lalu 5 |
 
+### 5.6 Pilot — reliabilitas antar-asesor (keputusan peneliti, 29 September 2026)
+
+Dua asesor (A, B) menilai institusi yang sama. Butir dengan `MISSING_ADMINISTRATIF` pada salah satu asesor dikeluarkan dari perbandingan dan dilaporkan.
+
+- **κw** = Cohen berbobot kuadratik atas level 1–5: `κw = 1 − Σ w_ij·O_ij / Σ w_ij·E_ij`, `w_ij = (i − j)² / (k − 1)²`. Bila `Σ w_ij·E_ij = 0` (tanpa variasi), κw **tidak terdefinisi** (null), tidak dilaporkan sebagai 1.
+- **Kesepakatan** = proporsi butir dengan level **persis sama**.
+- **Kelengkapan** = butir berlevel yang bukan `MISSING_ADMINISTRATIF` / seluruh butir, per asesmen.
+- **Keterlacakan** = proporsi skor level ≥ 2 yang memiliki locator bukti verbatim **dan** bukti wajib tercatat; 1 bila tidak ada skor level ≥ 2.
+
+| # | Pasangan level (A, B) | κw |
+|---|---|---|
+| P1 | (1,1) (2,2) (3,3) (4,4) (5,5) | 1 |
+| P2 | (1,2) (1,2) (2,1) (2,1) | −1 |
+| P3 | (1,1) (2,2) (3,3) (4,4) (5,4) (3,3) (2,3) (4,4) | 0,9 |
+| P4 | (3,3) ×3 | null (tanpa variasi) |
+| P5 | (2,2) (3,3) (4,4) (5,4) (2,2) (3,3) (4,5) (5,5) (3,3) (4,3) | 0,857143 |
+
 ---
 
 ## 6. Gate
@@ -413,6 +430,27 @@ Asesmen dijalankan oleh asesor simulasi atas **profil institusi fiktif** yang di
 | G6-7 | Missing administratif tetapi komposit terhitung | `MISSING_NOT_PROPAGATED` |
 | G6-8 | Tanpa laporan; laporan ekspor lama; laporan berbeda | `RECOMPUTE_NOT_RUN`; `RECOMPUTE_STALE`; `RECOMPUTE_DIFFERENCES` |
 | G6-9 | Hierarki tidak terkunci | `CONTENT_NOT_LOCKED` |
+
+### G7_PILOT (keputusan peneliti, 29 September 2026)
+
+Bersyarat (§3.11). Di aplikasi dry-run, pilot adalah **pilot antar-asesor simulasi**: dua asesor AI dengan model berbeda menilai profil fiktif yang sama; hasilnya selalu diberi peringatan `SIMULATED_PILOT` dan bukan pilot institusional.
+
+1. `G6_NOT_PASSED` (memblokir).
+2. `ETHICS_NOT_DECLARED`, `ACCESS_NOT_DECLARED` — deklarasi peneliti tercatat: izin etik (nomor dan tanggal) dan akses institusi (memblokir).
+3. `NO_PILOT_PAIR` — belum ada pasangan asesmen A/B yang selesai (memblokir).
+4. Per profil: `KAPPA_UNDEFINED`, `KAPPA_BELOW` (κw < `PILOT_KAPPA_MIN` 0,60), `AGREEMENT_BELOW` (< `PILOT_AGREEMENT_MIN` 0,80), per asesmen `COMPLETENESS_BELOW` (< 0,90) dan `TRACEABILITY_BELOW` (< 1,00) (memblokir). Nilai tepat di ambang lulus.
+5. Peringatan `EXCLUDED_MISSING: <profil> <n>`.
+
+Asesmen pilot (`purpose = PILOT`) tidak dihitung dalam G6 maupun ekspor rekalkulasi penskoran.
+
+| # | Situasi | Harapan |
+|---|---|---|
+| G7-1 | Semua syarat terpenuhi | lulus; `SIMULATED_PILOT` |
+| G7-2 | G6 belum lulus, tanpa deklarasi | `G6_NOT_PASSED`, `ETHICS_NOT_DECLARED`, `ACCESS_NOT_DECLARED` |
+| G7-3 | Belum ada pasangan | `NO_PILOT_PAIR` |
+| G7-4 | κw 0,60 dan kesepakatan 0,80; lalu 0,59 dan 0,79 | lulus; lalu `KAPPA_BELOW`, `AGREEMENT_BELOW` |
+| G7-5 | κw tidak terdefinisi, 2 butir dikeluarkan | `KAPPA_UNDEFINED`; peringatan `EXCLUDED_MISSING` |
+| G7-6 | Kelengkapan B 0,85, keterlacakan B 0,98 | `COMPLETENESS_BELOW`, `TRACEABILITY_BELOW` |
 
 `G4_CONTENT_LOCK` hanya dapat di-`PASSED` oleh `ADMIN`, dan mencatat `AuditEvent` dengan alasan.
 

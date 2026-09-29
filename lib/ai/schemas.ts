@@ -5,7 +5,8 @@ export const ACTIONS = ["TAMBAH", "HAPUS", "GABUNG", "PECAH", "PINDAH", "RUMUS_U
 
 export const VoteSchema = z.object({
   position: z.enum(["TERIMA", "TERIMA_DENGAN_REVISI", "TOLAK"]),
-  reason: z.string().min(20).max(600),
+  // Some models argue at length; 1200 keeps the vote readable without failing the whole component.
+  reason: z.string().min(20).max(1200),
   proposedAction: z.enum(ACTIONS).nullable(),
 });
 export type Vote = z.infer<typeof VoteSchema>;
@@ -26,9 +27,10 @@ export type NoteExtraction = z.infer<typeof NoteExtractionSchema>;
 // does not leak into the relevance score.
 export const RatingSchema = z.object({
   relevance: z.number().int().min(1).max(4),
-  reason: z.string().min(10).max(400),
+  // Relaxed 2026-09-29 (400/300): some models write longer reasons; the 1–4 score is unchanged.
+  reason: z.string().min(10).max(1000),
   clarityFlag: z.boolean(),
-  clarityNote: z.string().max(300).nullable(),
+  clarityNote: z.string().max(600).nullable(),
 });
 export type Rating = z.infer<typeof RatingSchema>;
 
@@ -37,7 +39,8 @@ export const PairwiseSchema = z
   .object({
     preferred: z.enum(["A", "B", "EQUAL"]),
     intensity: z.number().int().min(1).max(9),
-    reason: z.string().min(10).max(300),
+    // Relaxed 2026-09-29 (300): longer reasons failed whole matrices; preference and intensity are unchanged.
+    reason: z.string().min(10).max(800),
   })
   .refine((p) => (p.preferred === "EQUAL") === (p.intensity === 1), { message: "EQUAL harus berintensitas 1, dan intensitas 1 berarti EQUAL" });
 export type Pairwise = z.infer<typeof PairwiseSchema>;

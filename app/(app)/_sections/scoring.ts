@@ -1,6 +1,7 @@
 import { listAssessments, listIndicatorScores } from "@/lib/db/repository/scoring";
 import type { Translator } from "@/lib/i18n";
 
+import { PilotView } from "./pilot-views";
 import { AssessmentHeaderView, CalculatorView, ProfileSectionView } from "./scoring-views";
 import { col, type ModuleSections } from "./types";
 
@@ -46,4 +47,5 @@ export const scoringSections: ModuleSections<"scoring"> = {
   },
   profil: { notices: [{ key: "notices.scoringProvisional" }], view: { kind: "custom", render: (ctx) => ProfileSectionView(ctx) } },
   kalkulator: { notices: [{ key: "notices.scoringProvisional" }], view: { kind: "custom", render: (ctx) => CalculatorView(ctx) } },
+  pilot: { view: { kind: "custom", render: (ctx) => PilotView(ctx) } },
 };

@@ -72,9 +72,12 @@ async function scoreNext(assessmentId: string): Promise<ScoringRunOutcome> {
   const capOf = (satisfied: string[]) => evidenceLevelCap(evidence, satisfied);
 
   try {
-    const r = await assessIndicator(target, ind.code, ctx, hash32(`${assessment.seed}|scoring`), (v) =>
-      v.level !== null && v.level > capOf(v.satisfiedEvidence) ? `level ${v.level} melebihi plafon bukti wajib ${capOf(v.satisfiedEvidence)} (docs/05 §5.5)` : null,
-    );
+    const r = await assessIndicator(target, ind.code, ctx, hash32(`${assessment.seed}|scoring`), (v) => {
+      if (v.level === null || v.level <= capOf(v.satisfiedEvidence)) return null;
+      // Name the unmet mandatory evidence so the single retry can fix the choice (the cap rule itself is unchanged).
+      const missing = evidence.filter((e) => e.mandatory && (e.minimumFor ?? 1) <= v.level! && !v.satisfiedEvidence.includes(e.id)).map((e) => `${e.id} (L${e.minimumFor ?? 1})`);
+      return `level ${v.level} melebihi plafon bukti wajib ${capOf(v.satisfiedEvidence)} (docs/05 §5.5); bukti wajib belum dipilih: ${missing.join(", ")} — pilih bila profil memuatnya, atau turunkan level`;
+    });
     const saved = await saveScore(assessmentId, ind.id, {
       level: r.value.level,
       missingKind: r.value.missingKind,

@@ -12,6 +12,8 @@ import { GATE_ORDER, type GateKey } from "@/lib/method/gates";
 export interface GateState {
   gate: GateKey;
   status: string;
+  /** Version on the process line that holds this gate's record. */
+  versionLabel?: string;
 }
 
 export async function AppTopbar({
@@ -32,7 +34,7 @@ export async function AppTopbar({
   onSignOut: () => Promise<void>;
 }) {
   const t = await getTranslator();
-  const statusByGate = new Map(gates.map((g) => [g.gate, g.status]));
+  const byGate = new Map(gates.map((g) => [g.gate, g]));
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur">
@@ -47,7 +49,7 @@ export async function AppTopbar({
       />
       <nav aria-label={t("topbar.gates")} className="hidden min-w-0 items-center gap-1 overflow-x-auto md:flex">
         {GATE_ORDER.map((gate, i) => {
-          const status = statusByGate.get(gate) ?? "PENDING";
+          const status = byGate.get(gate)?.status ?? "PENDING";
           return (
             <GateChip
               key={gate}
@@ -55,6 +57,7 @@ export async function AppTopbar({
               label={t(`gates.${gate}`)}
               status={status}
               statusLabel={t.maybe(`enums.${status}`) ?? status}
+              versionLabel={byGate.get(gate)?.versionLabel}
             />
           );
         })}

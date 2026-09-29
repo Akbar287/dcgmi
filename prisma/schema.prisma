@@ -651,6 +651,11 @@ model Assessment {
   createdAt        DateTime            @default(now())
   profileId        String?
   profile          InstitutionProfile? @relation(fields: [profileId], references: [id])
+  /// SCORING (counts for G6) | PILOT (inter-assessor pilot, G7 only).
+  purpose          String              @default("SCORING")
+  pilotRunId       String?
+  /// A | B within a pilot run.
+  pilotRole        String?
   modelProfileId   String?
   /// AHP session whose aggregated (G5) weights the rollup used.
   weightsSessionId String?
@@ -888,4 +893,52 @@ model AppSetting {
   value       Json
   updatedById String?
   updatedAt   DateTime @updatedAt
+}
+
+/// Simulated inter-assessor pilot (docs/05 §5.6, G7): two assessors, same fictional profiles.
+model PilotRun {
+  id          String     @id @default(cuid())
+  versionId   String
+  dataOrigin  DataOrigin @default(SIMULATED)
+  profileIds  String[]
+  assessorA   String
+  assessorB   String
+  seed        Int        @default(0)
+  status      RunStatus  @default(QUEUED)
+  createdById String?
+  createdAt   DateTime   @default(now())
+}
+
+/// G7 researcher declarations: ETHICS (reference + date) and ACCESS (note).
+model PilotDeclaration {
+  id           String   @id @default(cuid())
+  versionId    String
+  kind         String
+  reference    String?
+  date         String?
+  note         String?
+  declaredById String?
+  createdAt    DateTime @default(now())
+
+  @@index([versionId, kind])
+}
+
+/// Full G1–G7 report of a version lineage (SPECIFICATION §4.10): AI narrative
+/// per chapter, reviewed and approved by the researcher, then one PDF.
+model ReportJob {
+  id          String    @id @default(cuid())
+  versionId   String
+  /// QUEUED | NARRATING | REVIEW | BUILDING | COMPLETED | FAILED
+  status      String    @default("QUEUED")
+  modelId     String
+  /// [{ key, title, status: PENDING|DRAFT|APPROVED, narrative, facts, generatedAt, approvedById, approvedAt, edited, error }]
+  chapters    Json
+  pdf         Bytes?
+  pdfSha256   String?
+  pages       Int?
+  error       String?
+  budgetUsd   Decimal?  @db.Decimal(10, 4)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
 }

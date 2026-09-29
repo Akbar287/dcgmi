@@ -8,12 +8,16 @@ export function GateChip({
   label,
   status,
   statusLabel,
+  versionLabel,
 }: {
   index: number;
   label: string;
   status: string;
   statusLabel: string;
+  /** Version on the process line where this gate stands. */
+  versionLabel?: string;
 }) {
+  const where = versionLabel ? ` · ${versionLabel}` : "";
   return (
     <Tooltip>
       <TooltipTrigger
@@ -30,6 +34,7 @@ export function GateChip({
         G{index}
         <span className="sr-only">
           {label}: {statusLabel}
+          {where}
         </span>
         <span aria-hidden="true" className="hidden xl:inline">
           · {statusLabel}
@@ -37,6 +42,7 @@ export function GateChip({
       </TooltipTrigger>
       <TooltipContent>
         {label} — {statusLabel}
+        {where}
       </TooltipContent>
     </Tooltip>
   );

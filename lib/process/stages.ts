@@ -9,7 +9,7 @@ export const STAGES = [
   { stage: "CONTENT_LOCK", gate: "G4_CONTENT_LOCK", href: "/artefak/versi", items: { inputs: ["a"], outputs: ["a", "b"], gate: ["a"] } },
   { stage: "AHP", gate: "G5_AHP", href: "/ahp/konfigurasi", items: { inputs: ["a", "b", "c"], outputs: ["a", "b", "c"], gate: ["a"] } },
   { stage: "SCORING", gate: "G6_SCORING", href: "/scoring/asesmen", items: { inputs: ["a", "b", "c"], outputs: ["a", "b", "c"], gate: ["a"] } },
-  { stage: "PILOT", gate: "G7_PILOT", href: null, items: { inputs: ["a", "b"], outputs: ["a"], gate: ["a"] } },
+  { stage: "PILOT", gate: "G7_PILOT", href: "/scoring/pilot", items: { inputs: ["a", "b"], outputs: ["a"], gate: ["a"] } },
 ] as const satisfies readonly {
   stage: string;
   gate: GateKey;

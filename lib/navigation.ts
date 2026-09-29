@@ -29,7 +29,7 @@ export const NAV_MODULES = [
   {
     key: "scoring",
     icon: ChartBarLineIcon,
-    sections: ["asesmen", "bukti", "skor", "data-hilang", "profil", "kalkulator"],
+    sections: ["asesmen", "bukti", "skor", "data-hilang", "profil", "kalkulator", "pilot"],
   },
   { key: "runs", icon: WorkflowSquare01Icon, sections: ["daftar", "perancang", "monitor", "estimator"] },
   { key: "audit", icon: Shield01Icon, sections: ["aktivitas", "log-model", "ekspor", "reproduksi"] },

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SessionRoom } from "@/components/organisms/fgd/room/session-room";
 import type { RoomView } from "@/components/organisms/fgd/room/types";
 import { SectionTemplate } from "@/components/templates/section-template";
+import { LiveFeed } from "@/components/organisms/live-feed";
 import { requirePermission } from "@/lib/auth/session";
 import { getSessionRoom } from "@/lib/db/repository/fgd-sessions";
 import { getTranslator } from "@/lib/i18n/server";
@@ -78,6 +79,7 @@ export default async function FgdRoomPage({ params, searchParams }: PageProps<"/
         </Link>
       }
     >
+      <LiveFeed refKey={`FgdSession:${session.id}`} />
       <SessionRoom room={room} runAction={runNextItemAction} controlAction={sessionControlAction} />
     </SectionTemplate>
   );

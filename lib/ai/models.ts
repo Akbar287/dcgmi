@@ -27,6 +27,20 @@ export function gatewayFamily(modelId: string): string | null {
 
 export const isMockAi = () => process.env.MOCK_AI === "1";
 
+/**
+ * "Thinking rendah" for panel seats (researcher decision 2026-09-29, token
+ * savings): per-family provider options that switch hidden reasoning off or
+ * down through the gateway. Families without a working switch get none.
+ */
+export function lowThinkingOptions(modelId: string): Record<string, Record<string, unknown>> | undefined {
+  const family = gatewayFamily(modelId);
+  if (family === "alibaba") return { alibaba: { enableThinking: false } };
+  if (family === "deepseek") return { deepseek: { thinking: { type: "disabled" } } };
+  if (family === "google") return { google: { thinkingConfig: { thinkingLevel: /flash/.test(modelId) ? "minimal" : "low" } } };
+  if (family === "openai") return { openai: { reasoningEffort: "low" } };
+  return undefined;
+}
+
 /** MOCK_AI=1: the same AI SDK code path runs against a deterministic fixture (docs/04 §3). */
 export function mockModel(modelId: string, output: () => string): LanguageModel {
   return new MockLanguageModelV4({

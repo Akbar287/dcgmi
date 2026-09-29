@@ -5,11 +5,12 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import { exportFilename, exportOrigin, toCsv, toJson, type Cell } from "@/lib/export/watermark";
+import { toPdf } from "@/lib/export/pdf";
 import { toXlsx } from "@/lib/export/xlsx";
 import { getTranslator } from "@/lib/i18n/server";
 import { isSection, type ModuleKey } from "@/lib/navigation";
 
-const FORMATS = ["csv", "xlsx", "json"] as const;
+const FORMATS = ["csv", "xlsx", "json", "pdf"] as const;
 type Format = (typeof FORMATS)[number];
 
 // SPECIFICATION §4.10: every table view exports as CSV/XLSX/JSON with the
@@ -46,6 +47,11 @@ export async function GET(request: Request) {
   } else if (format === "json") {
     body = toJson({ table: `${moduleKey}/${section}`, version: version?.label ?? null, exportedAt: new Date().toISOString() }, columns.map((c) => c.id), rows.map((r) => Object.fromEntries(columns.map((c) => [c.id, value(r[c.id])]))), origin);
     type = "application/json; charset=utf-8";
+  } else if (format === "pdf") {
+    const t2 = `${t.maybe(`nav.modules.${moduleKey}`) ?? moduleKey} — ${t.maybe(`nav.sections.${moduleKey}.${section}`) ?? section}`;
+    const pdf = await toPdf(t2, `${version?.label ?? ""} · ${rows.length} baris · ${new Date().toISOString()}`, columns.map((c) => c.header), rows.map((r) => columns.map((c) => value(r[c.id]))), origin);
+    body = Buffer.from(pdf.bytes);
+    type = "application/pdf";
   } else {
     body = await toXlsx(`${moduleKey}_${section}`, columns.map((c) => c.header), rows.map((r) => columns.map((c) => value(r[c.id]))), origin);
     type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

@@ -150,6 +150,34 @@ export async function listGateRecords(versionId: string) {
   });
 }
 
+/**
+ * Gate status along the whole process line of a version: its ancestors, the
+ * version itself, and its newest descendant at each step (A1.0 → A1.1 → A2.0).
+ * Each gate shows the furthest record on that line, i.e. where the flow stands,
+ * with the label of the version that holds it (researcher decision 2026-09-29).
+ */
+export async function listLineageGates(versionId: string) {
+  const prisma = await db();
+  const versions = await prisma.artifactVersion.findMany({ select: { id: true, label: true, parentId: true, createdAt: true } });
+  const byId = new Map(versions.map((v) => [v.id, v]));
+  const up: typeof versions = [];
+  for (let v = byId.get(versionId); v; v = v.parentId ? byId.get(v.parentId) : undefined) up.unshift(v);
+  const line = [...up];
+  for (let current = byId.get(versionId); current; ) {
+    const child: (typeof versions)[number] | undefined = versions.filter((v) => v.parentId === current!.id).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+    if (child) line.push(child);
+    current = child;
+  }
+  const records = await prisma.gateRecord.findMany({ where: { versionId: { in: line.map((v) => v.id) } }, select: { gate: true, status: true, versionId: true } });
+  const depth = new Map(line.map((v, i) => [v.id, i]));
+  const furthest = new Map<string, (typeof records)[number]>();
+  for (const r of records) {
+    const prior = furthest.get(r.gate);
+    if (!prior || depth.get(r.versionId)! > depth.get(prior.versionId)!) furthest.set(r.gate, r);
+  }
+  return [...furthest.values()].map((r) => ({ gate: r.gate, status: r.status, versionLabel: byId.get(r.versionId)!.label }));
+}
+
 /** Mirrors prisma/seed.ts so the dashboard evaluates G1 exactly as the seed does. */
 export async function getArtifactSnapshot(versionId: string): Promise<ArtifactSnapshot> {
   const prisma = await db();

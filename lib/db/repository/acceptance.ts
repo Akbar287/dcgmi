@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 
 import { exportFilename, sheetName, toCsv, toJson, WATERMARK } from "@/lib/export/watermark";
+import { toPdf } from "@/lib/export/pdf";
 import { toXlsx } from "@/lib/export/xlsx";
 import { GateError } from "@/lib/method/errors";
 import { assertGate, evaluateAhpGate, evaluateBaselineGate } from "@/lib/method/gates";
@@ -56,8 +57,10 @@ export async function evaluateAcceptance(versionId: string | null): Promise<Crit
   await book.xlsx.load((await toXlsx("uji", ["a"], [[1]], "SIMULATED")) as unknown as ArrayBuffer);
   const sheet = book.worksheets[0];
   const xlsxOk = sheet.name === sheetName("uji", "SIMULATED") && String(sheet.getRow(1).getCell(1).value).startsWith(WATERMARK.slice(0, 20)) && (sheet.views[0] as { ySplit?: number }).ySplit === 2;
-  const wmOk = csv.startsWith("# KELUARAN SIMULASI") && json._warning === WATERMARK && json._dataOrigin === "SIMULATED" && xlsxOk && exportFilename("x", "csv", "SIMULATED").startsWith("SIM_");
-  out.push({ n: 5, ok: wmOk, detail: wmOk ? "CSV, XLSX, JSON, dan nama berkas SIM_ diperiksa" : "watermark tidak lengkap" });
+  const pdf = await toPdf("uji", "uji", ["a"], Array.from({ length: 120 }, (_, i) => [i]), "SIMULATED");
+  const pdfOk = pdf.pages > 1 && pdf.watermarked === pdf.pages;
+  const wmOk = csv.startsWith("# KELUARAN SIMULASI") && json._warning === WATERMARK && json._dataOrigin === "SIMULATED" && xlsxOk && pdfOk && exportFilename("x", "csv", "SIMULATED").startsWith("SIM_");
+  out.push({ n: 5, ok: wmOk, detail: wmOk ? `CSV, XLSX, JSON, PDF (${pdf.pages} halaman, semuanya berwatermark), dan nama berkas SIM_ diperiksa; pengecualian tercatat: laporan G1–G7 (PDF/Word) tanpa watermark atas keputusan peneliti 29 Sep 2026` : "watermark tidak lengkap" });
 
   const deviating = await prisma.delphiItemResult.count({ where: { validRaters: { not: 8 } } });
   out.push({ n: 6, ok: deviating === 0, detail: deviating ? `${deviating} hasil butir dengan penilai valid ≠ 8 tersimpan` : "tidak ada hasil butir dengan penilai ≠ 8; ronde menyimpang dihentikan (C7)" });
