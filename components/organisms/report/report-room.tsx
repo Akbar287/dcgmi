@@ -102,6 +102,36 @@ export function ReportRoom({
           )}
         </CardContent>
       </Card>
+      {approved === job.chapters.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("report.partsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">{t("report.partsHint")}</p>
+            <ul className="divide-y rounded-lg border">
+              {job.chapters.map((c, i) => (
+                <li key={c.key} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                  <span className="text-sm">
+                    {i + 1}. {c.title}
+                  </span>
+                  <span className="flex gap-2">
+                    <a href={`/api/report/${job.id}/part/${c.key}?format=docx`} download className="rounded-4xl border px-3 py-1 text-xs font-medium">
+                      Word
+                    </a>
+                    <a href={`/api/report/${job.id}/part/${c.key}?format=pdf`} download className="rounded-4xl border px-3 py-1 text-xs font-medium">
+                      PDF
+                    </a>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <a href={`/api/report/${job.id}/parts`} download className="inline-block rounded-4xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+              {t("report.partsZip")}
+            </a>
+          </CardContent>
+        </Card>
+      ) : null}
       {job.chapters.map((c, i) => (
         <Card key={c.key}>
           <CardHeader>

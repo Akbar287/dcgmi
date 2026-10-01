@@ -390,6 +390,8 @@ refreshCatalogPricesAction()                            // panel:manage; katalog
 | `/api/export/reproduction` | GET | **Terimplementasi:** ZIP paket reproduksibilitas versi aktif + garis turunannya, dengan manifest SHA-256 |
 | `/api/report/[jobId]` | GET | **Terimplementasi:** PDF laporan lengkap G1–G7 yang sudah disetujui per bab (`Laporan_G1-G7_<label>.pdf`; tanpa watermark sejak 29 Sep 2026 atas keputusan peneliti) |
 | `/api/report/[jobId]/docx` | GET | **Terimplementasi:** versi Word (.docx) laporan yang sama, dibangun saat diunduh dari bab yang sudah disetujui (tanpa panggilan model); tanpa watermark, catatan simulasi, atau awalan `SIM_` atas keputusan peneliti 29 Sep 2026; AuditEvent `EXPORT_REPORT_DOCX` |
+| `/api/report/[jobId]/part/[key]?format=pdf\|docx` | GET | **Terimplementasi:** satu bab laporan (`intro`, `g1`, `g2`, `derive`, `g3`…`g7`, `closing`) sebagai berkas tersendiri dengan sampul dan daftar isinya, `Laporan_<label>_<nn>_<bab>.<ext>`; AuditEvent `EXPORT_REPORT_PART` |
+| `/api/report/[jobId]/parts` | GET | **Terimplementasi:** ZIP seluruh bab dalam Word dan PDF (`pdf/…`, `word/…`); AuditEvent `EXPORT_REPORT_PARTS` |
 | `/api/forms/[slug]/submit` | POST | Pengiriman formulir publik (rate-limited) |
 | `/api/forms/[slug]/autosave` | POST | Simpan otomatis jawaban parsial |
 | `/api/files/signed-url` | POST | URL bertanda tangan untuk CV/lampiran |

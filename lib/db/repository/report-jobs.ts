@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 
+import JSZip from "jszip";
+
 import type { Prisma } from "@/generated/prisma/client";
 import { withCallSink } from "@/lib/ai/call";
 import { narrateChapter } from "@/lib/ai/report";
-import { renderReportDocx } from "@/lib/export/report-docx";
-import { renderReport } from "@/lib/export/report-pdf";
+import { blocksToDocx, renderReportDocx } from "@/lib/export/report-docx";
+import { blocksToPdf, renderReport } from "@/lib/export/report-pdf";
+import { buildReportBlocks, splitReportBlocks, type ReportPart } from "@/lib/report/blocks";
 import { REPORT_CHAPTERS, REPORT_MODEL_ID, type ChapterKey, type ChapterState } from "@/lib/report/chapters";
 import { factsText } from "@/lib/report/facts";
 
@@ -146,6 +149,65 @@ export async function buildReportDocx(actorId: string, jobId: string, opts: { wi
   const filename = `Laporan_G1-G7_${version.label.replace(/[^A-Za-z0-9._-]+/g, "_")}.docx`;
   await prisma.auditEvent.create({ data: { actorId, actorKind: "USER", action: "EXPORT_REPORT_DOCX", targetType: "ReportJob", targetId: jobId, payload: { filename, sha256, bytes: bytes.length, watermark: false, identities: !!identities } } });
   return { bytes, sha256, filename };
+}
+
+/** Approved chapters, report data, and meta for the per-part documents (no model call). */
+async function partsContext(actorId: string, jobId: string, opts: { withIdentities?: boolean }) {
+  const prisma = await db();
+  const job = await prisma.reportJob.findUnique({ where: { id: jobId } });
+  if (!job) throw new ReportError("NOT_FOUND", "Laporan tidak ditemukan.");
+  const chapters = chaptersOf(job);
+  const open = chapters.filter((c) => c.status !== "APPROVED");
+  if (open.length) throw new ReportError("STATE", `Bab belum disetujui: ${open.map((c) => c.title).join(", ")}`);
+  const [data, actor, approvers, version] = await Promise.all([
+    loadReportData(job.versionId),
+    prisma.user.findUnique({ where: { id: actorId }, select: { name: true, email: true } }),
+    prisma.user.findMany({ where: { id: { in: chapters.map((c) => c.approvedById).filter((x): x is string => !!x) } }, select: { id: true, name: true, email: true } }),
+    prisma.artifactVersion.findUniqueOrThrow({ where: { id: job.versionId }, select: { label: true } }),
+  ]);
+  const identities = opts.withIdentities
+    ? new Map((await prisma.panelistIdentity.findMany({ select: { panelCode: true, fullName: true } })).map((i) => [i.panelCode, { fullName: i.fullName, field: "" }]))
+    : undefined;
+  const generatedAt = new Date();
+  const meta = { generatedAt, generatedBy: actor?.name ?? actor?.email ?? "peneliti", modelId: job.modelId, users: new Map(approvers.map((u) => [u.id, u.name ?? u.email ?? u.id])) };
+  // Panelist names go into the Word files only (PDF parts keep codes, as the stored PDF does).
+  const pdfParts = splitReportBlocks(buildReportBlocks(data, chapters, meta));
+  const docxParts = identities ? splitReportBlocks(buildReportBlocks(data, chapters, { ...meta, identities })) : pdfParts;
+  const label = version.label.replace(/[^A-Za-z0-9._-]+/g, "_");
+  const stamp = generatedAt.toISOString().replace("T", " ").slice(0, 16);
+  return { pdfParts, docxParts, label, stamp, versionLabel: version.label, identities: !!identities };
+}
+
+const partTitle = (p: ReportPart, versionLabel: string) => `Laporan G1–G7 ${versionLabel} — Bagian ${p.index + 1}: ${p.title}`;
+
+async function renderPart(p: ReportPart, format: "pdf" | "docx", versionLabel: string, stamp: string) {
+  if (format === "docx") return blocksToDocx(p.blocks, partTitle(p, versionLabel));
+  return (await blocksToPdf(p.blocks, partTitle(p, versionLabel), `${versionLabel} · bagian ${p.index + 1} · ${stamp}`)).bytes;
+}
+
+/** One chapter of the report as Word or PDF (researcher request 1 Oct 2026). */
+export async function buildReportPart(actorId: string, jobId: string, key: ChapterKey, format: "pdf" | "docx", opts: { withIdentities?: boolean } = {}) {
+  const ctx = await partsContext(actorId, jobId, opts);
+  const part = (format === "docx" ? ctx.docxParts : ctx.pdfParts).find((p) => p.key === key);
+  if (!part) throw new ReportError("NOT_FOUND", "Bagian laporan tidak ditemukan.");
+  const bytes = await renderPart(part, format, ctx.versionLabel, ctx.stamp);
+  const filename = `Laporan_${ctx.label}_${part.slug}.${format}`;
+  const prisma = await db();
+  await prisma.auditEvent.create({ data: { actorId, actorKind: "USER", action: "EXPORT_REPORT_PART", targetType: "ReportJob", targetId: jobId, payload: { part: key, format, filename, bytes: bytes.length, watermark: false, identities: format === "docx" && ctx.identities } } });
+  return { bytes, filename };
+}
+
+/** Every chapter in both formats, zipped. */
+export async function buildReportPartsZip(actorId: string, jobId: string, opts: { withIdentities?: boolean } = {}) {
+  const ctx = await partsContext(actorId, jobId, opts);
+  const zip = new JSZip();
+  for (const p of ctx.pdfParts) zip.file(`pdf/Laporan_${ctx.label}_${p.slug}.pdf`, await renderPart(p, "pdf", ctx.versionLabel, ctx.stamp));
+  for (const p of ctx.docxParts) zip.file(`word/Laporan_${ctx.label}_${p.slug}.docx`, await renderPart(p, "docx", ctx.versionLabel, ctx.stamp));
+  const bytes = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+  const filename = `Laporan_${ctx.label}_per-bagian.zip`;
+  const prisma = await db();
+  await prisma.auditEvent.create({ data: { actorId, actorKind: "USER", action: "EXPORT_REPORT_PARTS", targetType: "ReportJob", targetId: jobId, payload: { filename, parts: ctx.pdfParts.length, bytes: bytes.length, watermark: false, identities: ctx.identities } } });
+  return { bytes, filename };
 }
 
 export async function getReportJob(jobId: string) {

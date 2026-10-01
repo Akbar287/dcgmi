@@ -16,7 +16,9 @@ export interface Column {
 }
 
 export type Block =
-  | { type: "cover"; title: string; subtitle: string; rows: [string, Cell][]; note: string }
+  | { type: "cover"; title: string; subtitle: string; rows: [string, Cell][]; note: string; tocPages?: number }
+  /** Marks where a chapter starts; renderers ignore it, splitReportBlocks uses it. */
+  | { type: "chapter"; key: ChapterKey }
   | { type: "heading"; text: string; level: 1 | 2 | 3 }
   | { type: "narrative"; attribution: string; paragraphs: string[] }
   | { type: "kv"; rows: [string, Cell][] }
@@ -81,6 +83,10 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   const chart = (title: string, svg: string) => out.push({ type: "chart", title, svg });
   const note = (text: string) => out.push({ type: "note", text });
   const kv = (rows: [string, Cell][]) => out.push({ type: "kv", rows });
+  const chapterStart = (i: number) => {
+    out.push({ type: "chapter", key: REPORT_CHAPTERS[i].key });
+    h(`${i + 1}. ${REPORT_CHAPTERS[i].title}`, 1);
+  };
 
   const root = d.lineage[0];
   const ch = (k: ChapterKey) => chapters.find((c) => c.key === k)!;
@@ -152,7 +158,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   });
 
   // 1. Intro.
-  h(`1. ${REPORT_CHAPTERS[0].title}`, 1);
+  chapterStart(0);
   narrative("intro");
   h("Garis versi", 2);
   table([{ header: "Versi", weight: 1.8 }, { header: "Status", weight: 1.1 }, { header: "Induk", weight: 1.8 }, { header: "Dibuat", weight: 1.3 }, { header: "Dikunci", weight: 1.3 }, { header: "Catatan", weight: 3 }], d.lineage.map((v) => [v.label, v.status, d.lineage.find((p) => p.id === v.parentId)?.label ?? null, dt(v.createdAt), dt(v.contentLockedAt), v.note]));
@@ -178,7 +184,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   note("ok = syarat terpenuhi pada evaluasi saat laporan dibuat; status = keputusan tercatat.");
 
   // 2. G1.
-  h(`2. ${REPORT_CHAPTERS[1].title}`, 1);
+  chapterStart(1);
   narrative("g1");
   for (const v of d.lineage) {
     h(`G1 ${v.label}`, 3);
@@ -187,7 +193,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   artifactFull(root.id, root.label);
 
   // 3. G2.
-  h(`3. ${REPORT_CHAPTERS[2].title}`, 1);
+  chapterStart(2);
   narrative("g2");
   const sessions = d.fgd.filter((s) => s.versionId === fgdVersion?.id);
   if (fgdVersion) gateBlock(fgdVersion.id, "G2_FGD");
@@ -224,7 +230,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   }
 
   // 4. Derived version.
-  h(`4. ${REPORT_CHAPTERS[3].title}`, 1);
+  chapterStart(3);
   narrative("derive");
   const adopted = d.fgd.flatMap((s) => s.stages.flatMap((st) => st.items.flatMap((i) => i.suggestions))).filter((x) => x.adopted === true);
   if (adopted.length) chart("Tugas revisi dari usulan yang diadopsi", donut("Tugas revisi dari usulan FGD yang diadopsi", [{ label: "Diterapkan di versi turunan", value: adopted.filter((x) => x.appliedAt).length }, { label: "Ditunda / belum diterapkan", value: adopted.filter((x) => !x.appliedAt).length }], { centerLabel: "tugas" }));
@@ -243,7 +249,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   }
 
   // 5. G3.
-  h(`5. ${REPORT_CHAPTERS[4].title}`, 1);
+  chapterStart(4);
   narrative("g3");
   if (delphiVersion) gateBlock(delphiVersion.id, "G3_DELPHI");
   for (const r of d.delphi.filter((x) => x.versionId === delphiVersion?.id)) {
@@ -267,7 +273,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   }
 
   // 6. G4.
-  h(`6. ${REPORT_CHAPTERS[5].title}`, 1);
+  chapterStart(5);
   narrative("g4");
   if (delphiVersion) gateBlock(delphiVersion.id, "G4_CONTENT_LOCK");
   if (locked) {
@@ -286,7 +292,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   }
 
   // 7. G5.
-  h(`7. ${REPORT_CHAPTERS[6].title}`, 1);
+  chapterStart(6);
   narrative("g5");
   if (locked) gateBlock(locked.id, "G5_AHP");
   for (const s of d.ahp.filter((x) => x.versionId === locked?.id)) {
@@ -327,7 +333,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   }
 
   // 8. G6.
-  h(`8. ${REPORT_CHAPTERS[7].title}`, 1);
+  chapterStart(7);
   narrative("g6");
   if (locked) gateBlock(locked.id, "G6_SCORING");
   h("Profil institusi fiktif", 2);
@@ -357,7 +363,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   table([{ header: "Waktu", weight: 1.2 }, { header: "SHA-256 ekspor", weight: 4 }, { header: "Identik", weight: 0.7 }, { header: "Perbedaan", weight: 0.7, align: "right" }], d.recompute.filter((c) => c.versionId === locked?.id).map((c) => [dt(c.createdAt), c.exportSha256, c.ok, c.diffCount]));
 
   // 9. G7.
-  h(`9. ${REPORT_CHAPTERS[8].title}`, 1);
+  chapterStart(8);
   narrative("g7");
   if (locked) gateBlock(locked.id, "G7_PILOT");
   table([{ header: "Deklarasi", weight: 1 }, { header: "Referensi", weight: 2 }, { header: "Tanggal", weight: 1 }, { header: "Catatan", weight: 4 }, { header: "Dicatat", weight: 1.3 }], d.declarations.filter((x) => x.versionId === locked?.id).map((x) => [x.kind, x.reference, x.date, x.note, dt(x.createdAt)]));
@@ -392,7 +398,7 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
   }
 
   // 10. Closing + ledger appendix.
-  h(`10. ${REPORT_CHAPTERS[9].title}`, 1);
+  chapterStart(9);
   narrative("closing");
   if (d.calls.length) {
     h("Ringkasan grafis biaya dan panggilan model", 2);
@@ -417,3 +423,37 @@ export function buildReportBlocks(d: ReportData, chapters: ChapterState[], meta:
 }
 
 export const reportTitle = (d: ReportData) => `Laporan lengkap G1–G7 — ${d.lineage[d.lineage.length - 1].label}`;
+
+export interface ReportPart {
+  key: ChapterKey;
+  index: number;
+  title: string;
+  /** e.g. "03_G2-FGD" — used in file names. */
+  slug: string;
+  blocks: Block[];
+}
+
+/**
+ * One document per chapter (researcher request 1 Oct 2026): each part gets its
+ * own cover and the chapter's blocks exactly as in the full report.
+ */
+export function splitReportBlocks(blocks: Block[]): ReportPart[] {
+  const cover = blocks.find((b): b is Extract<Block, { type: "cover" }> => b.type === "cover");
+  const parts: ReportPart[] = [];
+  let current: ReportPart | null = null;
+  for (const b of blocks) {
+    if (b.type === "chapter") {
+      const index = REPORT_CHAPTERS.findIndex((c) => c.key === b.key);
+      const c = REPORT_CHAPTERS[index];
+      current = {
+        key: c.key,
+        index,
+        title: c.title,
+        slug: `${String(index + 1).padStart(2, "0")}_${c.file}`,
+        blocks: cover ? [{ ...cover, title: cover.title.replace("LAPORAN LENGKAP", "LAPORAN"), subtitle: `Bagian ${index + 1} dari ${REPORT_CHAPTERS.length}: ${c.title} — ${cover.subtitle.replace(/^Gate G1 sampai G7 — /, "")}`, tocPages: 1 }] : [],
+      };
+      parts.push(current);
+    } else if (current) current.blocks.push(b);
+  }
+  return parts;
+}

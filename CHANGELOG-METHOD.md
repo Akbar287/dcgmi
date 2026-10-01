@@ -246,3 +246,7 @@ Tidak ada konstanta atau perhitungan yang berubah.
 | Nama pakar P01–P08 dicantumkan **hanya** di tabel "Komposisi panel" pada Word yang diunduh Admin, dengan keterangan bahwa isi diskusi adalah keluaran model AI; label kursi di seluruh tabel memakai kode persona ("Pakar 1 · P02"); nama tidak ditempelkan pada ujaran atau penilaian | docs/07 P6 | Mencegah pernyataan simulasi terbaca sebagai pernyataan pakar nyata |
 | **PDF laporan G1–G7 juga tanpa watermark, peringatan footer/metadata, dan awalan `SIM_`** — permintaan eksplisit peneliti utama (keputusan yang sama dengan versi Word; peneliti telah diberi tahu risikonya). `ReportWriter` mendapat opsi `marks` (bawaan `true`); hanya laporan G1–G7 memakai `marks: false`. Ekspor tabel dan paket reproduksi tetap berwatermark; kriteria §6.5 mencatat pengecualian ini | docs/07 P4 | Keputusan peneliti |
 
+## 2026-10-01 — Peneliti utama — Laporan per bagian
+
+Tidak ada konstanta atau perhitungan yang berubah. Laporan G1–G7 dapat diunduh per bab (10 berkas: pendahuluan, G1, G2, versi turunan, G3–G7, penutup) dalam Word dan PDF, atau semuanya dalam satu ZIP. Isi tiap bab identik dengan laporan lengkap (daftar blok yang sama), tanpa watermark sesuai keputusan 29 Sep 2026; nama pakar hanya di Word unduhan Admin (docs/07 P6).
+

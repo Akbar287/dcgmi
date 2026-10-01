@@ -66,3 +66,23 @@ describe("Word report", () => {
     expect(zip).toContain("word/media/");
   });
 });
+
+describe("report parts", () => {
+  it("splits the block list into one document per chapter, each with its own cover", async () => {
+    const { splitReportBlocks } = await import("@/lib/report/blocks");
+    const cover = { type: "cover" as const, title: "LAPORAN LENGKAP DRY-RUN", subtitle: "Gate G1 sampai G7 — garis versi A → B", rows: [] as [string, string][], note: "n" };
+    const parts = splitReportBlocks([
+      cover,
+      { type: "chapter", key: "intro" },
+      { type: "heading", text: "1. Pendahuluan", level: 1 },
+      { type: "note", text: "a" },
+      { type: "chapter", key: "g2" },
+      { type: "heading", text: "3. G2", level: 1 },
+      { type: "table", columns: [{ header: "x" }], rows: [[1]] },
+    ]);
+    expect(parts.map((p) => p.slug)).toEqual(["01_Pendahuluan", "03_G2-FGD"]);
+    expect(parts[1].blocks[0]).toMatchObject({ type: "cover", tocPages: 1, title: "LAPORAN DRY-RUN" });
+    expect((parts[1].blocks[0] as { subtitle: string }).subtitle).toContain("Bagian 3 dari 10: G2 — FGD simulasi");
+    expect(parts[1].blocks.map((b) => b.type)).toEqual(["cover", "heading", "table"]);
+  });
+});
